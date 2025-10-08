@@ -1,0 +1,82 @@
+<div class="content-wrapper">
+
+  <h1 class="title">Guess by the Manga Recommendations</h1>
+
+  <div *ngIf="isLoading()" class="loading-container">
+    <p>Loading recommendations...</p>
+  </div>
+
+  <ng-container *ngIf="!isLoading()">
+    <div class="recommendation-panels-container">
+      <div class="recommendation-item">
+        <div class="manga-panel-container">
+          <img 
+            src="https://placehold.co/230x345/000000/FFFFFF?text=1" 
+            alt="Recommendation Panel 1" 
+            class="manga-panel-image">
+        </div>
+        <h3 class="panel-title">Manga Title 1</h3>
+      </div>
+      <div class="recommendation-item">
+        <div class="manga-panel-container">
+          <img src="https://placehold.co/230x345/000000/FFFFFF?text=2" alt="Recommendation Panel 2" class="manga-panel-image">
+        </div>
+        <h3 class="panel-title">Manga Title 2</h3>
+      </div>
+      <div class="recommendation-item">
+        <div class="manga-panel-container">
+          <img src="https://placehold.co/230x345/000000/FFFFFF?text=3" alt="Recommendation Panel 3" class="manga-panel-image">
+        </div>
+        <h3 class="panel-title">Manga Title 3</h3>
+      </div>
+    </div>
+  
+    <button *ngIf="!isHintRevealed()" class="recommendation-hint-button" (click)="showHint()">Hint: Score & Popularity</button>
+  
+    <div *ngIf="isHintRevealed()" class="hint-text-container">
+      <p>Score: 8.75</p>
+      <p>Popularity: #42</p>
+    </div>
+  
+    <!-- The main searchable dropdown component -->
+    <div class="search-wrapper">
+        <div class="search-dropdown-container">
+          <!-- 1. Search Input and Button -->
+          <div class="search-bar">
+            <div class="input-wrapper">
+              <input
+                type="text"
+                placeholder="Type to search items..."
+                [ngModel]="searchTerm()"
+                (ngModelChange)="searchTerm.set($event); isDropdownOpen.set(true)"
+                (focus)="onInputFocus()"
+                (blur)="onInputBlur()"
+                class="search-input"
+              >
+              <button *ngIf="searchTerm()" (click)="clearSearch()" class="clear-button" type="button">&times;</button>
+            </div>
+            <button class="submit-button">
+              Guess
+            </button>
+          </div>
+      
+          <!-- 2. Dropdown List (Custom Options Overlay) -->
+          <div *ngIf="isDropdownOpen()" class="dropdown-list">
+            <!-- No Results Message -->
+            <div *ngIf="filteredItemList().length === 0" class="no-results-option">
+              No results found for "{{ searchTerm() }}"
+            </div>
+      
+            <!-- Options Loop -->
+            @for (item of filteredItemList(); track item.title) {
+              <div class="dropdown-option" (mousedown)="selectItem(item)" [class.selected]="item.title === selectedItem()?.title">
+                <div class="option-details">
+                  <span class="option-name">{{ item.title }}</span>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+    </div>
+  </ng-container>
+</div>

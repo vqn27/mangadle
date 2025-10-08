@@ -1,0 +1,20 @@
+{
+  "/api": {
+    "target": "https://imgs-2.2xstorage.com",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "debug",
+    "pathRewrite": {
+      "^/api": ""
+    }
+  },
+  "/gs-api": {
+    "target": "https://script.google.com",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "debug",
+    "pathRewrite": {
+      "^/gs-api": ""
+    }
+  }
+}

@@ -1,0 +1,309 @@
+.content-wrapper {
+    background-color: #ffffff;
+    padding: 32px;
+    border-radius: 16px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    border: 1px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 900px;
+    box-sizing: border-box;
+}
+
+.title {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #1f2937; /* A darker gray */
+    margin-bottom: 24px;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px; /* Give it some space */
+  color: #6b7280; /* gray-500 */
+}
+
+.recommendation-panels-container {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-bottom: 30px;
+    width: 100%;
+}
+
+.recommendation-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.panel-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #374151; /* gray-700 */
+    text-align: center;
+}
+
+.manga-panel-container {
+    border: 4px solid black;
+    padding: 8px;
+    background-color: white;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    max-width: 250px; /* Adjusted for a larger size */
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+}
+
+.manga-panel-image {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.recommendation-hint-button {
+  background-color: #fff;
+  border: 2px solid #374151; /* gray-700 */
+  color: #374151;
+  font-weight: 700;
+  font-size: 1rem;
+  height: 40px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+  padding: 0 20px;
+  margin-bottom: 24px;
+}
+
+.recommendation-hint-button:hover {
+  background-color: #374151;
+  color: #fff;
+}
+
+.hint-text-container {
+  margin-bottom: 24px;
+  padding: 12px;
+  background-color: #f3f4f6; /* gray-100 */
+  border-radius: 8px;
+  border: 1px solid #e5e7eb; /* gray-200 */
+  width: 30%;
+  max-width: 700px; /* Match the search wrapper */
+  text-align: center;
+  font-weight: 600;
+  color: #4b5563; /* gray-600 */
+  box-sizing: border-box;
+}
+
+/* Make the search component take up the width defined in its own CSS */
+app-search {
+    width: 100%;
+}
+
+
+/* General Search Wrapper */
+.search-wrapper {
+    width: 100%;
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+/* Container for the dropdown logic */
+.search-dropdown-container {
+    position: relative;
+}
+
+/* Container for input and button */
+.search-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Space between input and button */
+}
+
+/* New wrapper for input and clear button */
+.input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex-grow: 1; /* Take up available space */
+}
+
+/* Search Input Field */
+.search-input {
+    padding: 12px 40px 12px 16px; /* Add padding to the right for the clear button */
+    border: 1px solid #d1d5db; /* gray-300 */
+    border-radius: 8px;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    width: 100%;
+    flex-grow: 1; /* Allow input to take available space */
+}
+
+.search-input:focus {
+    border-color: #3b82f6; /* blue-500 */
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+/* Clear button inside the search input */
+.clear-button {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    font-size: 1.5rem;
+    color: #9ca3af; /* gray-400 */
+    cursor: pointer;
+}
+
+.clear-button:hover {
+    color: #374151; /* gray-700 */
+}
+
+/* Submit Button */
+.submit-button {
+    padding: 12px 20px;
+    border: none;
+    background-color: #3b82f6; /* blue-500 */
+    color: white;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    white-space: nowrap; /* Prevent text wrapping */
+}
+
+.submit-button:hover {
+    background-color: #2563eb; /* blue-600 */
+}
+
+/* --- Guess Button States --- */
+.submit-button.incorrect-guess {
+  background-color: #dc2626; /* red-600 */
+}
+
+.submit-button.incorrect-guess:hover {
+  background-color: #b91c1c; /* red-700 */
+}
+
+.submit-button.correct-guess {
+  background-color: #22c55e; /* green-500 */
+}
+
+.submit-button.correct-guess:hover {
+  background-color: #16a34a; /* green-600 */
+}
+
+/* --- Result Popups --- */
+.result-popup-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.6);
+    z-index: 100;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.result-popup-content {
+  background-color: white;
+  padding: 24px 32px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  text-align: center;
+  width: 90%;
+  max-width: 400px;
+}
+
+.result-popup-content h2 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+.result-popup-content p {
+  margin: 4px 0;
+  color: #4b5563;
+  font-size: 1rem;
+}
+
+.popup-close-button {
+  margin-top: 20px;
+  padding: 10px 20px;
+  border: none;
+  background-color: #3b82f6; /* blue-500 */
+  color: white;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+
+/* Dropdown List */
+.dropdown-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin-top: 8px;
+    background-color: white;
+    border: 1px solid #e5e7eb; /* gray-200 */
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 10;
+}
+
+/* Dropdown Option */
+.dropdown-option {
+    display: flex;
+    align-items: center;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: background-color 0.15s;
+}
+
+.dropdown-option:hover {
+    background-color: #f3f4f6; /* gray-100 */
+}
+
+.dropdown-option.selected {
+    background-color: #dbeafe; /* blue-100 */
+    color: #1d4ed8; /* blue-700 */
+}
+
+.option-photo {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-right: 12px;
+    object-fit: cover;
+    border: 1px solid #e5e7eb;
+}
+
+.option-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.no-results-option {
+    padding: 10px 16px;
+    color: #6b7280; /* gray-500 */
+    font-style: italic;
+}
