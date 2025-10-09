@@ -5,26 +5,24 @@ import { HttpClient } from '@angular/common/http';
 import { Item } from '../item.model';
 
 @Component({
-  selector: 'app-recommendation',
+  selector: 'app-least-popular',
   standalone: true, // Modern Angular format
   imports: [
     CommonModule,   // Enables *ngIf, @for
     FormsModule     // Enables [(ngModel)]
   ],
-  templateUrl: './recommendation.html',
-  styleUrls: ['./recommendation.css']
+  templateUrl: './least-popular.html',
+  styleUrls: ['./least-popular.css']
 })
-export class Recommendation implements OnInit {
+export class LeastPopularComponent implements OnInit {
   private http = inject(HttpClient);
 
   // === UI State ===
   searchTerm = signal('');
   isDropdownOpen = signal(false);
+  isHintRevealed = signal(false);
   isLoading = signal(true);
 
-  // === Review State ===
-  openReviews = signal(new Set<number>());
-  
   // === Data State ===
   fullItemList: Item[] = []; // Start with an empty list
 
@@ -78,6 +76,13 @@ export class Recommendation implements OnInit {
   }
 
   /**
+   * Reveals the hint text.
+   */
+  showHint(): void {
+    this.isHintRevealed.set(true);
+  }
+
+  /**
    * Clears the search term.
    */
   clearSearch(): void {
@@ -95,31 +100,13 @@ export class Recommendation implements OnInit {
         // Sort the data alphabetically by title before assigning it
         const sortedData = data.sort((a, b) => a.title.localeCompare(b.title));
         this.fullItemList = sortedData;
-        console.log('Successfully fetched and sorted data for recommendations.');
+        console.log('Successfully fetched and sorted data for least-popular characters.');
         this.isLoading.set(false);
       },
       error: (err) => {
-        console.error('Failed to fetch recommendation data from Google Apps Script. This could be a CORS issue if the script is not configured for public JSON access.', err);
+        console.error('Failed to fetch least-popular data from Google Apps Script. This could be a CORS issue if the script is not configured for public JSON access.', err);
         this.isLoading.set(false);
       }
-    });
-  }
-
-  /**
-   * Toggles the visibility of a review for a specific manga.
-   * If a review is open, it will be closed. If it's closed, it will be opened.
-   * @param reviewId The ID of the manga review to show.
-   */
-  toggleReview(reviewId: number): void {
-    this.openReviews.update(reviews => {
-      // Create a new Set to ensure change detection is triggered
-      const newReviews = new Set(reviews);
-      if (newReviews.has(reviewId)) {
-        newReviews.delete(reviewId);
-      } else {
-        newReviews.add(reviewId);
-      }
-      return newReviews;
     });
   }
 }

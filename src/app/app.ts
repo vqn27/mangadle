@@ -1,59 +1,231 @@
-import { Component, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { Router, RouterLink, RouterOutlet, NavigationEnd } from '@angular/router';
-import { filter, map } from 'rxjs/operators';
+import { Component, HostBinding, signal, effect, inject, PLATFORM_ID } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 @Component({
   selector: 'app-root',
   standalone: true, // The App component is also standalone
-  imports: [CommonModule, RouterOutlet, RouterLink], 
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive], 
   template: `
-    <main>
-      <a *ngIf="!(isRecommendationPage$ | async)" routerLink="/recommendation" class="top-right-button">Guess by Recommendations</a>
-      <a *ngIf="isRecommendationPage$ | async" routerLink="/" class="top-right-button">Guess by Manga Panel</a>
-      <router-outlet></router-outlet>
-    </main>
+    <div class="app-container">
+      <nav class="sidebar">
+        <div class="sidebar-header">
+          <h2 class="sidebar-title">Mangadle</h2>
+        </div>
+        <a routerLink="/" 
+           class="sidebar-link" 
+           routerLinkActive="active" 
+           [routerLinkActiveOptions]="{exact: true}">
+          <span class="sidebar-link-icon">🖼️</span>
+          <span class="sidebar-link-text">Guess by Manga Panel</span>
+        </a>
+        <a routerLink="/recommendation" class="sidebar-link" routerLinkActive="active">
+          <span class="sidebar-link-icon">👍</span>
+          <span class="sidebar-link-text">Guess by Recommendations</span>
+        </a>
+        <a routerLink="/least-popular" class="sidebar-link" routerLinkActive="active">
+          <span class="sidebar-link-icon">📉</span>
+          <span class="sidebar-link-text">Guess by Least Popular Characters</span>
+        </a>
+      </nav>
+      <main>
+        <button class="dark-mode-button" (click)="toggleDarkMode()">
+          {{ isDarkMode() ? 'Light Mode ☀️' : 'Dark Mode 🌙' }}
+        </button>
+        <router-outlet></router-outlet>
+      </main>
+    </div>
   `,
   styles: [`
-    main { 
-      position: relative; /* Needed for absolute positioning */
-      padding: 40px 20px; 
+    :host {
       font-family: 'Inter', sans-serif;
-      background-color: #f0f2f5;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+      
+      /* Light Theme (Default) */
+      --bg-color: #f0f2f5;
+      --sidebar-bg: #1f2937;
+      --sidebar-text: #d1d5db;
+      --sidebar-title-text: #fff;
+      --sidebar-border: #4b5563;
+      --sidebar-link-hover-bg: #374151;
+      --sidebar-link-active-bg: #6d28d9;
+      --theme-toggle-bg: transparent;
+      --theme-toggle-border: #1f2937;
+      --theme-toggle-text: #1f2937;
+      --theme-toggle-hover-bg: #1f2937;
+      --theme-toggle-hover-text: #fff;
     }
 
-    .top-right-button {
+    :host(.dark) {
+      /* Dark Theme */
+      --bg-color: #18181b; /* zinc-900 */
+      --sidebar-bg: #121212; /* A very dark gray */
+      --sidebar-text: #a1a1aa; /* zinc-400 */
+      --sidebar-title-text: #fff;
+      --sidebar-border: #3f3f46; /* zinc-700 */
+      --sidebar-link-hover-bg: #27272a; /* zinc-800 */
+      --sidebar-link-active-bg: #6d28d9;
+      --theme-toggle-bg: transparent;
+      --theme-toggle-border: #52525b; /* zinc-600 */
+      --theme-toggle-text: #d4d4d8; /* zinc-300 */
+      --theme-toggle-hover-bg: #27272a; /* zinc-800 */
+      --theme-toggle-hover-text: #fafafa; /* zinc-50 */
+    }
+
+    .app-container {
+      display: flex;
+      min-height: 100vh;
+      background-color: var(--bg-color);
+      transition: background-color 0.3s ease;
+    }
+
+    .sidebar {
+      width: 260px;
+      background-color: var(--sidebar-bg);
+      color: var(--sidebar-text);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      flex-shrink: 0;
+      transition: background-color 0.3s ease;
+      border-top-right-radius: 16px;
+      border-bottom-right-radius: 16px;
+    }
+
+    .sidebar-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--sidebar-border);
+    }
+
+    .dark-mode-button {
       position: absolute;
       top: 20px;
       right: 20px;
-      padding: 10px 20px;
-      background-color: #6d28d9; /* A nice purple */
-      color: white;
-      text-decoration: none;
-      border-radius: 8px;
+      background-color: var(--theme-toggle-bg);
+      border: 2px solid var(--theme-toggle-border);
+      color: var(--theme-toggle-text);
+      font-size: 1rem;
       font-weight: 600;
-      transition: background-color 0.2s;
+      cursor: pointer;
+      padding: 8px 16px;
+      border-radius: 8px;
+      transition: background-color 0.2s, color 0.2s, border-color 0.2s;
     }
 
-    .top-right-button:hover {
-      background-color: #5b21b6; /* Darker purple */
+    .dark-mode-button:hover {
+      background-color: var(--theme-toggle-hover-bg);
+      color: var(--theme-toggle-hover-text);
+    }
+
+    .sidebar-title {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--sidebar-title-text);
+      margin: 0;
+    }
+
+    .sidebar-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--sidebar-text);
+      text-decoration: none;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-weight: 500;
+      transition: background-color 0.2s, color 0.2s;
+    }
+
+    .sidebar-link-icon {
+      font-size: 1.2rem;
+      width: 24px; /* Fixed width for alignment */
+      text-align: center;
+    }
+
+    .sidebar-link:hover {
+      background-color: var(--sidebar-link-hover-bg);
+      color: #fff;
+    }
+
+    .sidebar-link.active {
+      background-color: var(--sidebar-link-active-bg);
+      color: #fff;
+      font-weight: 600;
+    }
+
+    main { 
+      position: relative; /* For absolute positioning of the button */
+      flex-grow: 1;
+      padding: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    @media (max-width: 768px) {
+      .app-container {
+        flex-direction: column;
+      }
+      .sidebar {
+        width: 100%;
+        height: auto;
+        border-radius: 0;
+      }
+      main {
+        padding: 20px;
+      }
+    }
+
+    /* Global style to remove default body margin */
+    ::ng-deep body {
+      margin: 0;
     }
   `]
 })
 export class App {
-  private router = inject(Router);
-  isRecommendationPage$ = this.router.events.pipe(
-    filter((event): event is NavigationEnd => event instanceof NavigationEnd),
-    map(event => {
-      let route = this.router.routerState.root;
-      while (route.firstChild) {
-        route = route.firstChild;
+  private platformId = inject(PLATFORM_ID);
+  private readonly darkModeKey = 'mangadle-dark-mode';
+
+  isDarkMode = signal<boolean>(this.getInitialDarkMode());
+
+  constructor() {
+    // This effect will run whenever `isDarkMode` changes, saving the preference.
+    effect(() => {
+      if (isPlatformBrowser(this.platformId)) {
+        localStorage.setItem(this.darkModeKey, JSON.stringify(this.isDarkMode()));
       }
-      return route.snapshot.data['isRecommendationPage'] === true;
-    })
-  );
+    });
+  }
+
+  @HostBinding('class.dark')
+  get isDark() {
+    return this.isDarkMode();
+  }
+
+  toggleDarkMode(): void {
+    this.isDarkMode.set(!this.isDarkMode());
+  }
+
+  private getInitialDarkMode(): boolean {
+    if (!isPlatformBrowser(this.platformId)) {
+      return false; // Default to light mode on the server
+    }
+    // Check for an explicit preference in localStorage first.
+    const storedValue = localStorage.getItem(this.darkModeKey);
+    if (storedValue !== null) {
+      return JSON.parse(storedValue);
+    }
+
+    // If no stored preference, check the user's system preference.
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return true;
+    }
+
+    // Default to light mode if no preference is found.
+    return false;
+  }
 }
