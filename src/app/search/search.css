@@ -17,6 +17,12 @@
   --button-disabled-bg: #27272a; /* zinc-800 */
   --button-disabled-text: #71717a; /* zinc-500 */
   --button-disabled-border: #3f3f46; /* zinc-700 */
+  --answer-correct-bg: #14532d; /* green-900 */
+  --answer-correct-text: #dcfce7; /* green-100 */
+  --answer-correct-border: #22c55e; /* green-500 */
+  --answer-incorrect-bg: #7f1d1d; /* red-900 */
+  --answer-incorrect-text: #fee2e2; /* red-100 */
+  --answer-incorrect-border: #ef4444; /* red-500 */
 }
 
 .backdrop {
@@ -96,8 +102,30 @@
   color: var(--text-secondary, #6b7280);
 }
 
+.manga-panel-wrapper {
+  position: relative;
+  margin-bottom: 30px;
+  max-width: 420px; /* 400px image + padding + border */
+  width: 100%;
+}
+
+.image-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  font-weight: 600;
+  z-index: 2;
+  border-radius: 4px; /* Match inner radius */
+}
+
 .manga-panel-container {
-    margin-bottom: 30px;
     border: 4px solid black;
     padding: 8px;
     background-color: var(--card-bg, white);
@@ -108,6 +136,42 @@
     cursor: pointer;
     position: relative;
     z-index: 1;
+}
+
+.answer-container {
+  margin-top: -16px; /* Pull it up a bit */
+  margin-bottom: 24px;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  text-align: center;
+  width: 100%;
+  max-width: 420px; /* Match panel width */
+  box-sizing: border-box;
+  border: 2px solid;
+}
+
+.answer-container.correct-answer {
+  background-color: #dcfce7; /* green-100 */
+  color: #166534; /* green-800 */
+  border-color: #22c55e; /* green-500 */
+}
+:host-context(.dark) .answer-container.correct-answer {
+  background-color: var(--answer-correct-bg);
+  color: var(--answer-correct-text);
+  border-color: var(--answer-correct-border);
+}
+
+.answer-container.incorrect-answer {
+  background-color: #fee2e2; /* red-100 */
+  color: #991b1b; /* red-800 */
+  border-color: #ef4444; /* red-500 */
+}
+:host-context(.dark) .answer-container.incorrect-answer {
+  background-color: var(--answer-incorrect-bg);
+  color: var(--answer-incorrect-text);
+  border-color: var(--answer-incorrect-border);
 }
 
 .manga-panel-container.enlarged {

@@ -1,8 +1,8 @@
-import { Component, signal, computed, inject, OnInit, effect } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, signal, computed, inject, OnInit, effect, PLATFORM_ID } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { forkJoin } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
+import { forkJoin, of, Observable } from 'rxjs';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { Item } from '../item.model';
 
@@ -19,6 +19,7 @@ import { Item } from '../item.model';
 export class Search implements OnInit {
   private http = inject(HttpClient);
   private sanitizer = inject(DomSanitizer);
+  private platformId = inject(PLATFORM_ID);
 
   // === UI State ===
   searchTerm = signal('');
@@ -27,6 +28,7 @@ export class Search implements OnInit {
   highestPanelRevealed = signal(1); // Start with panel 1 revealed
   isHintRevealed = signal(false);
   isLoading = signal(true);
+  areImagesLoading = signal(true);
   guessResult = signal<'correct' | 'incorrect' | null>(null);
   isSubmitting = signal(false);
   isGameWon = signal(false);
@@ -70,6 +72,17 @@ export class Search implements OnInit {
       // When the user types, reset the incorrect guess state.
       this.guessIncorrect.set(false);
     });
+
+    // Effect to save the game state to localStorage when the game is won.
+    effect(() => {
+      if (this.isGameWon() && this.randomDailyManga()) {
+        const key = this.getStorageKey(this.randomDailyManga()!.title);
+        if (isPlatformBrowser(this.platformId) && key) {
+          localStorage.setItem(key, 'won');
+        }
+      }
+    });
+
   }
 
   ngOnInit() {
@@ -88,13 +101,26 @@ export class Search implements OnInit {
         this.randomDailyManga.set(dailyMangaDetails);
         this.randomDailyMangaChapter = dailyManga.chapter;
 
+        // Check if the game for today has already been won.
+        if (isPlatformBrowser(this.platformId)) {
+          const key = this.getStorageKey(dailyManga.title);
+          const gameState = localStorage.getItem(key);
+          if (gameState === 'won') {
+            this.isGameWon.set(true);
+            this.guessResult.set('correct'); // Show the success popup immediately
+          } else if (gameState === 'lost') {
+            this.guessIncorrect.set(true);
+            this.guessResult.set('incorrect'); // Show the incorrect popup immediately
+          }
+        }
+
         console.log('Daily manga for today:', this.randomDailyManga());
         
         // 3. Fetch the images for the daily manga.
         this.fetchMangaImagesDaily([dailyManga.img1, dailyManga.img2, dailyManga.img3]);
-
-        // 4. Turn off the loading indicator.
-        
+        // Turn off main loading indicator after initial data is fetched.
+        // The image loader will have its own indicator.
+        this.isLoading.set(false);
         console.log('Successfully fetched and processed all initial data.');
       },
       error: (err) => {
@@ -183,6 +209,11 @@ export class Search implements OnInit {
       } else {
         this.guessResult.set('incorrect');
         this.guessIncorrect.set(true);
+        // Set the 'lost' state in localStorage directly on an incorrect guess.
+        const key = this.getStorageKey(this.randomDailyManga()!.title);
+        if (isPlatformBrowser(this.platformId) && key) {
+          localStorage.setItem(key, 'lost');
+        }
       }
     } finally {
       this.isSubmitting.set(false);
@@ -204,40 +235,84 @@ export class Search implements OnInit {
     this.guessResult.set(null); // Hide the popup
   }
 
+  /**
+   * Generates a unique key for localStorage based on the manga title.
+   * @param title The title of the daily manga.
+   */
+  private getStorageKey(title: string): string {
+    return `mangadle-gameState-${title}`;
+  }
+
   private fetchMangaImagesDaily(imageUrls: string[]): void {    
     interface ImageResponse {
       data: string; // Base64 encoded image data
       mimetype: string;
       url: string;
     }
+    this.areImagesLoading.set(true);
+    
+    const imageObservables: Observable<ImageResponse>[] = imageUrls.map(imageUrl => {
+      if (isPlatformBrowser(this.platformId)) {
+        const cachedImage = localStorage.getItem(imageUrl);
+        if (cachedImage) {
+          // If image is in cache, return it as an observable
+          return of(JSON.parse(cachedImage));
+        }
+      }
 
-    // Create an array of HTTP requests, one for each image URL.
-    const imageRequests = imageUrls.map(imageUrl => {
+      // If not in cache or not in browser, fetch it
       const url = `https://script.google.com/macros/s/AKfycbxgs6-WDBwD5JfLlUHIYfseS3MoQI6wqWBzS4aizs5N7kx7GhilrfB5sdmEpU9f_XD3/exec?url=${encodeURIComponent(imageUrl)}`;
-      // Expect a JSON response, not a direct blob.
       return this.http.get<ImageResponse>(url);
     });
 
-    // Use forkJoin to execute all requests in parallel and wait for them all to complete.
-    forkJoin(imageRequests).subscribe({
+    forkJoin(imageObservables).subscribe({
       next: (responses) => {
-        // For each response, convert the Base64 data to a Blob, then to a safe URL.
-        this.panelImages = responses.map(res => {
+        this.panelImages = responses.map((res, index) => {
+          // Save to cache if it wasn't there before
+          if (isPlatformBrowser(this.platformId)) {
+            const originalUrl = imageUrls[index];
+            if (!localStorage.getItem(originalUrl)) {
+              try {
+                localStorage.setItem(originalUrl, JSON.stringify(res));
+              } catch (e) {
+                console.error('Failed to cache image. Storage may be full.', e);
+                // Clear old game data if storage is full
+                if (e instanceof DOMException && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED')) {
+                  this.clearOldCache();
+                  // We don't retry caching in this same cycle to avoid loops
+                }
+              }
+            }
+          }
+
+          // Convert Base64 to a safe URL
           const imageBlob = this.b64toBlob(res.data, res.mimetype);
           const objectUrl = URL.createObjectURL(imageBlob);
           return this.sanitizer.bypassSecurityTrustUrl(objectUrl);
         });
 
         this.currentPanelUrl.set(this.panelImages[0]); // Set the first image as current.
-        console.log('Successfully fetched and processed all daily manga images.');
+        console.log('Successfully loaded all daily manga images (from cache or network).');
       },
       error: (err) => {
         console.error('Failed to fetch one or more daily manga images:', err);
-      }
+      },
     }).add(() => {
-      // Ensure loading is turned off in case of error as well.
-      this.isLoading.set(false);
-    })
+      // Turn off image-specific loading indicator.
+      this.areImagesLoading.set(false);
+    });
+  }
+
+  private clearOldCache(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+
+    console.warn('Clearing old Mangadle cache to free up space.');
+    Object.keys(localStorage).forEach(key => {
+      // Clear game state and image caches, but not the dark mode preference
+      if (key.startsWith('mangadle-gameState-') || key.startsWith('http')) {
+        localStorage.removeItem(key);
+      }
+    });
   }
 
   /**

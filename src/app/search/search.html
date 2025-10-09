@@ -14,7 +14,7 @@
 <div *ngIf="guessResult() === 'incorrect'" class="result-popup-backdrop" (click)="closePopup()">
   <div class="result-popup-content incorrect" (click)="$event.stopPropagation()">
     <h2>Incorrect! 🤔</h2>
-    <p>That's not the one. Try again!</p>
+    <p>The correct manga is {{ randomDailyManga()?.title }}!</p>
     <p>These pages appear in chapter {{ randomDailyMangaChapter}}</p>
     <button class="popup-incorrect-button-close-button" (click)="closePopup()">Play Again Tomorrow</button>
   </div>
@@ -28,12 +28,24 @@
   </div>
 
   <ng-container *ngIf="!isLoading()">
-    <div class="manga-panel-container" [class.enlarged]="isEnlarged()" (click)="toggleEnlarged($event)">
-      <img 
-        [src]="currentPanelUrl()" 
-        alt="Manga Panel to guess" 
-        class="manga-panel-image"
-      >
+    <div class="manga-panel-wrapper">
+      <div *ngIf="areImagesLoading()" class="image-loading-overlay">
+        <p>Loading panels...</p>
+      </div>
+      <div class="manga-panel-container" [class.enlarged]="isEnlarged()" (click)="toggleEnlarged($event)">
+        <img 
+          [src]="currentPanelUrl()" 
+          alt="Manga Panel to guess" 
+          class="manga-panel-image"
+        >
+      </div>
+    </div>
+
+    <div *ngIf="isGameWon() || guessIncorrect()"
+         class="answer-container"
+         [class.correct-answer]="isGameWon()"
+         [class.incorrect-answer]="guessIncorrect()">
+      Manga: {{ randomDailyManga()?.title }}
     </div>
   
     <div class="panel-buttons-container">
