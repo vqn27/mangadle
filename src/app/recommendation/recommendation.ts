@@ -22,6 +22,9 @@ export class Recommendation implements OnInit {
   isDropdownOpen = signal(false);
   isHintRevealed = signal(false);
   isLoading = signal(true);
+
+  // === Review State ===
+  openReviews = signal(new Set<number>());
   
   // === Data State ===
   fullItemList: Item[] = []; // Start with an empty list
@@ -107,6 +110,24 @@ export class Recommendation implements OnInit {
         console.error('Failed to fetch recommendation data from Google Apps Script. This could be a CORS issue if the script is not configured for public JSON access.', err);
         this.isLoading.set(false);
       }
+    });
+  }
+
+  /**
+   * Toggles the visibility of a review for a specific manga.
+   * If a review is open, it will be closed. If it's closed, it will be opened.
+   * @param reviewId The ID of the manga review to show.
+   */
+  toggleReview(reviewId: number): void {
+    this.openReviews.update(reviews => {
+      // Create a new Set to ensure change detection is triggered
+      const newReviews = new Set(reviews);
+      if (newReviews.has(reviewId)) {
+        newReviews.delete(reviewId);
+      } else {
+        newReviews.add(reviewId);
+      }
+      return newReviews;
     });
   }
 }

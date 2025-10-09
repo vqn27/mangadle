@@ -16,18 +16,33 @@
             class="manga-panel-image">
         </div>
         <h3 class="panel-title">Manga Title 1</h3>
+        <button *ngIf="!openReviews().has(1)" class="user-review-button" (click)="toggleReview(1)">User Review</button>
+        <div *ngIf="openReviews().has(1)" class="review-container">
+          <p class="review-text">"This is one of the best manga I have ever read. The character development is phenomenal, and the plot keeps you on the edge of your seat. I couldn't put it down!"</p>
+          <p class="review-author">- A Passionate Reader</p>
+        </div>
       </div>
       <div class="recommendation-item">
         <div class="manga-panel-container">
           <img src="https://placehold.co/230x345/000000/FFFFFF?text=2" alt="Recommendation Panel 2" class="manga-panel-image">
         </div>
         <h3 class="panel-title">Manga Title 2</h3>
+        <button *ngIf="!openReviews().has(2)" class="user-review-button" (click)="toggleReview(2)">User Review</button>
+        <div *ngIf="openReviews().has(2)" class="review-container">
+          <p class="review-text">"A truly unique story with breathtaking art. I was hooked from the very first chapter and read it all in one sitting. Highly recommended!"</p>
+          <p class="review-author">- Manga Aficionado</p>
+        </div>
       </div>
       <div class="recommendation-item">
         <div class="manga-panel-container">
           <img src="https://placehold.co/230x345/000000/FFFFFF?text=3" alt="Recommendation Panel 3" class="manga-panel-image">
         </div>
         <h3 class="panel-title">Manga Title 3</h3>
+        <button *ngIf="!openReviews().has(3)" class="user-review-button" (click)="toggleReview(3)">User Review</button>
+        <div *ngIf="openReviews().has(3)" class="review-container">
+          <p class="review-text">"The world-building is second to none. Every character feels alive and the story is full of unexpected twists. A must-read for any fantasy fan."</p>
+          <p class="review-author">- Avid Reader</p>
+        </div>
       </div>
     </div>
   
