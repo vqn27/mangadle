@@ -30,26 +30,24 @@
       <img [src]="randomManga()?.imageUrl" [alt]="randomManga()?.title" class="blurred-hint-image" draggable="false">
     </div>
 
-    <div class="manga-panel-wrapper">
-      <div *ngIf="areImagesLoading()" class="image-loading-overlay">
-        <p>Loading recommendations...</p>
-      </div>
-      <div class="recommendation-panels-container">
-        @for (rec of recommendations(); track rec.title) {
-          <div class="recommendation-item">
-            <div class="manga-panel-container">
-              <img 
-                [src]="rec.imageUrl" 
-                [alt]="rec.title" 
-                class="manga-panel-image">
-              <div class="synopsis-overlay">
-                <p class="synopsis-text">{{ rec.synopsis }}</p>
-              </div>
+    <div *ngIf="areImagesLoading()" class="image-loading-overlay">
+      <p>Loading recommendations...</p>
+    </div>
+    <div class="recommendation-panels-container">
+      @for (rec of recommendations(); track rec.title) {
+        <div class="recommendation-item">
+          <div class="manga-panel-container">
+            <img 
+              [src]="rec.imageUrl" 
+              [alt]="rec.title" 
+              class="manga-panel-image">
+            <div class="synopsis-overlay">
+              <p class="synopsis-text">{{ rec.synopsis }}</p>
             </div>
-            <h3 class="panel-title">{{ rec.title }}</h3>
           </div>
-        }
-      </div>
+          <h3 class="panel-title">{{ rec.title }}</h3>
+        </div>
+      }
     </div>
   
     <div *ngIf="isGameWon()" class="base-manga-title-container">

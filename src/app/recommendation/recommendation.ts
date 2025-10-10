@@ -16,7 +16,7 @@ import { Item, Recommendations, baseRandomRec } from '../item.model';
     FormsModule     // Enables [(ngModel)]
   ],
   templateUrl: './recommendation.html',
-  styleUrls: ['./recommendation.css']
+  styleUrls: ['./recommendation.css', '../shared-styles.css']
 })
 export class Recommendation implements OnInit {
   private http = inject(HttpClient);

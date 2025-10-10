@@ -15,7 +15,7 @@ import { tap } from 'rxjs/operators';
     FormsModule     // Enables [(ngModel)]
   ],
   templateUrl: './search.html',
-  styleUrls: ['./search.css']
+  styleUrls: ['./search.css', '../shared-styles.css']
 })
 export class Search implements OnInit {
   private http = inject(HttpClient);
