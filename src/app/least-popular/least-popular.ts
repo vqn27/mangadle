@@ -1,8 +1,10 @@
-import { Component, signal, computed, inject, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, signal, computed, inject, OnInit, PLATFORM_ID } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Item } from '../item.model';
+import { Observable, of } from 'rxjs';
+import { tap } from 'rxjs/operators';
 
 @Component({
   selector: 'app-least-popular',
@@ -16,6 +18,7 @@ import { Item } from '../item.model';
 })
 export class LeastPopularComponent implements OnInit {
   private http = inject(HttpClient);
+  private platformId = inject(PLATFORM_ID);
 
   // === UI State ===
   searchTerm = signal('');
@@ -93,12 +96,34 @@ export class LeastPopularComponent implements OnInit {
    * Fetches data from the Google Apps Script URL.
    */
   private fetchMangaData(): void {
-    const url = 'https://script.google.com/macros/s/AKfycbxgs6-WDBwD5JfLlUHIYfseS3MoQI6wqWBzS4aizs5N7kx7GhilrfB5sdmEpU9f_XD3/exec?action=data';
+    const fullListCacheKey = 'mangadle-fullItemList';
+    let dataObservable: Observable<Item[]>;
 
-    this.http.get<Item[]>(url).subscribe({
+    if (isPlatformBrowser(this.platformId)) {
+      const cachedData = localStorage.getItem(fullListCacheKey);
+      if (cachedData) {
+        console.log('Loading full manga list from cache for least-popular.');
+        dataObservable = of(JSON.parse(cachedData));
+      } else {
+        console.log('Fetching full manga list from network for least-popular.');
+        const url = 'https://script.google.com/macros/s/AKfycbxgs6-WDBwD5JfLlUHIYfseS3MoQI6wqWBzS4aizs5N7kx7GhilrfB5sdmEpU9f_XD3/exec?action=data';
+        dataObservable = this.http.get<Item[]>(url).pipe(
+          tap(data => localStorage.setItem(fullListCacheKey, JSON.stringify(data)))
+        );
+      }
+    } else {
+      const url = 'https://script.google.com/macros/s/AKfycbxgs6-WDBwD5JfLlUHIYfseS3MoQI6wqWBzS4aizs5N7kx7GhilrfB5sdmEpU9f_XD3/exec?action=data';
+      dataObservable = this.http.get<Item[]>(url);
+    }
+
+    dataObservable.subscribe({
       next: (data) => {
-        // Sort the data alphabetically by title before assigning it
-        const sortedData = data.sort((a, b) => a.title.localeCompare(b.title));
+        // Process the list to create a consistent display title.
+        const processedData = data.map(item => ({
+          ...item,
+          title: (item.eng_title && item.eng_title !== 'N/A') ? item.eng_title : item.jp_title
+        }));
+        const sortedData = processedData.sort((a, b) => a.title.localeCompare(b.title));
         this.fullItemList = sortedData;
         console.log('Successfully fetched and sorted data for least-popular characters.');
         this.isLoading.set(false);

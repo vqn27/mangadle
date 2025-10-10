@@ -33,6 +33,13 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
           {{ isDarkMode() ? 'Light Mode ☀️' : 'Dark Mode 🌙' }}
         </button>
         <router-outlet></router-outlet>
+        <!-- Debug button to clear cache -->
+
+        <!-- <button class="debug-button" (click)="clearCache()">
+          <span class="sidebar-link-icon">🗑️</span>
+          <span class="sidebar-link-text">Clear Cache</span>
+        </button> -->
+        
       </main>
     </div>
   `,
@@ -157,6 +164,26 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
       font-weight: 600;
     }
 
+    .debug-button {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      background-color: #4b5563; /* zinc-600 */
+      color: #d1d5db; /* zinc-300 */
+      border: none;
+      transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+    }
+
+    .debug-button:hover {
+      background-color: #ef4444; /* red-500 */
+      color: #fff;
+    }
+
     main { 
       position: relative; /* For absolute positioning of the button */
       flex-grow: 1;
@@ -208,6 +235,28 @@ export class App {
 
   toggleDarkMode(): void {
     this.isDarkMode.set(!this.isDarkMode());
+  }
+
+  /**
+   * Clears all application-related data from localStorage for debugging.
+   * This preserves the dark mode setting.
+   */
+  clearCache(): void {
+    if (isPlatformBrowser(this.platformId)) {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key !== this.darkModeKey) {
+          keysToRemove.push(key);
+        }
+      }
+
+      keysToRemove.forEach(key => {
+        localStorage.removeItem(key);
+      });
+
+      alert('Application cache cleared. Please refresh the page.');
+    }
   }
 
   private getInitialDarkMode(): boolean {

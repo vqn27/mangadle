@@ -100,6 +100,8 @@
     font-size: 1.1rem;
     font-weight: 600;
     color: var(--text-primary, #374151);
+    width: 230px; /* Match the manga panel width */
+    overflow-wrap: break-word; /* Ensure long words wrap */
     text-align: center;
 }
 

@@ -3,6 +3,7 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { forkJoin, of, Observable } from 'rxjs';
+import { tap } from 'rxjs/operators';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { Item, Recommendations, baseRandomRec } from '../item.model';
 
@@ -40,6 +41,9 @@ export class Recommendation implements OnInit {
   // === Data State ===
   fullItemList: Item[] = []; // Start with an empty list
 
+  // Dictionary to map Japanese titles to English titles
+  titleMap: { [jp_title: string]: string } = {};
+
   selectedItem = signal<Item | undefined>(undefined);
 
   // The recommendations to display
@@ -75,12 +79,17 @@ export class Recommendation implements OnInit {
       }
     });
 
-    // Effect to save the game state to localStorage when the game is won.
+    // Effect to save the game state to localStorage when the game is won or lost.
     effect(() => {
-      if (this.isGameWon() && this.randomManga()) {
-        const key = this.getStorageKey(this.randomManga()!.title);
+      const randomManga = this.randomManga();
+      if (randomManga) {
+        const key = this.getStorageKey(randomManga.title);
         if (isPlatformBrowser(this.platformId) && key) {
-          localStorage.setItem(key, 'won');
+          if (this.isGameWon()) {
+            localStorage.setItem(key, 'won');
+          } else if (this.isGameLost()) {
+            localStorage.setItem(key, 'lost');
+          }
         }
       }
     });
@@ -141,27 +150,53 @@ export class Recommendation implements OnInit {
    * Fetches data from the Google Apps Script URL.
    */
   private fetchMangaData(): void {
-    const dataUrl = 'https://script.google.com/macros/s/AKfycbxgs6-WDBwD5JfLlUHIYfseS3MoQI6wqWBzS4aizs5N7kx7GhilrfB5sdmEpU9f_XD3/exec?action=data';
+    const fullListCacheKey = 'mangadle-fullItemList';
+    let fullListObservable: Observable<Item[]>;
+
+    if (isPlatformBrowser(this.platformId)) {
+      const cachedFullList = localStorage.getItem(fullListCacheKey);
+      if (cachedFullList) {
+        console.log('Loading full manga list from cache for recommendations.');
+        fullListObservable = of(JSON.parse(cachedFullList));
+      } else {
+        console.log('Fetching full manga list from network for recommendations.');
+        const dataUrl = 'https://script.google.com/macros/s/AKfycbxgs6-WDBwD5JfLlUHIYfseS3MoQI6wqWBzS4aizs5N7kx7GhilrfB5sdmEpU9f_XD3/exec?action=data';
+        fullListObservable = this.http.get<Item[]>(dataUrl).pipe(
+          tap(data => localStorage.setItem(fullListCacheKey, JSON.stringify(data)))
+        );
+      }
+    } else {
+      const dataUrl = 'https://script.google.com/macros/s/AKfycbxgs6-WDBwD5JfLlUHIYfseS3MoQI6wqWBzS4aizs5N7kx7GhilrfB5sdmEpU9f_XD3/exec?action=data';
+      fullListObservable = this.http.get<Item[]>(dataUrl);
+    }
+
     const reccsUrl = 'https://script.google.com/macros/s/AKfycbxgs6-WDBwD5JfLlUHIYfseS3MoQI6wqWBzS4aizs5N7kx7GhilrfB5sdmEpU9f_XD3/exec?action=dailyReccs';
 
     forkJoin({
-      fullList: this.http.get<Item[]>(dataUrl),
+      fullList: fullListObservable,
       dailyReccs: this.http.get<any>(reccsUrl)
     }).subscribe({
       next: ({ fullList, dailyReccs }) => {
+        // Create a dictionary mapping jp_title to eng_title from the full list
+        this.titleMap = fullList.reduce((acc, item) => {
+          if (item.jp_title && item.eng_title && item.eng_title !== 'N/A') {
+            acc[item.jp_title] = item.eng_title;
+          }
+          return acc;
+        }, {} as { [jp_title: string]: string });
+
         // Process the manga list to use a single, consistent title property.
-        const processedList = fullList.map(item => {
-          const displayTitle = (item.eng_title && item.eng_title !== 'N/A') ? item.eng_title : item.title;
-          return { ...item, title: displayTitle };
-        });
+        const processedList = fullList.map(item => ({
+          ...item,
+          title: (item.eng_title && item.eng_title !== 'N/A') ? item.eng_title : item.jp_title
+        }));
 
         // Set the full item list, sorted alphabetically by the display title.
         this.fullItemList = processedList.sort((a, b) => a.title.localeCompare(b.title));
 
-        console.log(dailyReccs);
         // Find the base manga in the processed list to get its proper display title
-        const baseMangaFromList = processedList.find(item => item.title === dailyReccs.base_title || item.eng_title === dailyReccs.base_title);
-        const displayTitle = (baseMangaFromList?.eng_title && baseMangaFromList.eng_title !== 'N/A') ? baseMangaFromList.eng_title : dailyReccs.base_title;
+        const baseMangaFromList = processedList.find(item => item.jp_title === dailyReccs.base_title || item.eng_title === dailyReccs.base_title);
+        const displayTitle = baseMangaFromList ? baseMangaFromList.title : dailyReccs.base_title;
 
         // 1. Assign the base_title to the randomManga signal
         this.randomManga.set({
@@ -174,7 +209,7 @@ export class Recommendation implements OnInit {
 
         // Check if the game for today has already been won/lost.
         if (isPlatformBrowser(this.platformId)) {
-          const key = this.getStorageKey(dailyReccs.base_title);
+          const key = this.getStorageKey(displayTitle);
           const gameState = localStorage.getItem(key);
           if (gameState === 'won') {
             this.isGameWon.set(true);
@@ -185,42 +220,44 @@ export class Recommendation implements OnInit {
           }
         }
 
+        let recommendationsToSet: Recommendations[] = [];
+
         // Check for cached recommendations for the current base title
         if (isPlatformBrowser(this.platformId)) {
           const cacheKey = `reccs-${dailyReccs.base_title}`;
           const cachedReccs = localStorage.getItem(cacheKey);
           if (cachedReccs) {
-            this.recommendations.set(JSON.parse(cachedReccs));
-            this.fetchRecommendationImages();
-
+            recommendationsToSet = JSON.parse(cachedReccs);
             console.log(`Successfully loaded CACHED recommendations based on: ${this.randomManga()}`);
-            this.isLoading.set(false);
-            return; // Exit early as we have the cached data
           }
         }
 
-        // 2. Create an array to hold the recommendation data by parsing the flat object
-        const recommendations: Recommendations[] = [];
-        for (let i = 1; i <= 12; i++) { // Assuming up to 12 recommendations
-          const title = dailyReccs[`rec_title_${i}`];
-          const imageUrl = dailyReccs[`rec_image_url_${i}`];
-          const synopsis = dailyReccs[`rec_synopsis_${i}`];
+        // If no cached recommendations, create them from the fetched data
+        if (recommendationsToSet.length === 0) {
+          for (let i = 1; i <= 12; i++) { // Assuming up to 12 recommendations
+            const jp_title = dailyReccs[`rec_title_${i}`];
+            const imageUrl = dailyReccs[`rec_image_url_${i}`];
+            const synopsis = dailyReccs[`rec_synopsis_${i}`];
 
-          
-          if (title && imageUrl && synopsis) {
-            recommendations.push({ title, imageUrl, synopsis }); 
+            // Use the title map to find the English title, otherwise use the Japanese title
+            const title = (jp_title && this.titleMap[jp_title]) ? this.titleMap[jp_title] : jp_title;
+            
+            if (title && imageUrl && synopsis) {
+              recommendationsToSet.push({ title, imageUrl, synopsis }); 
+            }
           }
+
+          // Save the newly created recommendations to the cache
+          if (isPlatformBrowser(this.platformId)) {
+            const cacheKey = `reccs-${dailyReccs.base_title}`;
+            localStorage.setItem(cacheKey, JSON.stringify(recommendationsToSet));
+          }
+          console.log(`Successfully fetched and cached new recommendations based on: ${this.randomManga()?.title}`);
         }
 
-
-        // Save the newly shuffled recommendations to the cache
-        if (isPlatformBrowser(this.platformId)) {
-          const cacheKey = `reccs-${dailyReccs.base_title}`;
-          localStorage.setItem(cacheKey, JSON.stringify(recommendations));
-        }
-
-        console.log(`Successfully fetched recommendations based on: ${this.randomManga()}`);
-        console.log(this.recommendations);
+        // Set the recommendations and fetch their images
+        this.recommendations.set(recommendationsToSet);
+        this.fetchRecommendationImages();
       },
       error: (err) => {
         console.error('Failed to fetch data from Google Apps Script. This could be a CORS issue if the script is not configured for public JSON access.', err);
@@ -246,11 +283,6 @@ export class Recommendation implements OnInit {
       } else {
         this.guessResult.set('incorrect');
         this.isGameLost.set(true);
-        // Set the 'lost' state in localStorage directly on an incorrect guess.
-        const key = this.getStorageKey(this.randomManga()!.title);
-        if (isPlatformBrowser(this.platformId) && key) {
-          localStorage.setItem(key, 'lost');
-        }
       }
     } finally {
       this.isSubmitting.set(false);

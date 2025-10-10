@@ -5,6 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { forkJoin, of, Observable } from 'rxjs';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { Item } from '../item.model';
+import { tap } from 'rxjs/operators';
 
 @Component({
   selector: 'app-search',
@@ -86,26 +87,44 @@ export class Search implements OnInit {
   }
 
   ngOnInit() {
+    const fullListCacheKey = 'mangadle-fullItemList';
+    let mangaListObservable: Observable<Item[]>;
+
+    if (isPlatformBrowser(this.platformId)) {
+      const cachedMangaList = localStorage.getItem(fullListCacheKey);
+      if (cachedMangaList) {
+        console.log('Loading full manga list from cache for search.');
+        mangaListObservable = of(JSON.parse(cachedMangaList));
+      } else {
+        console.log('Fetching full manga list from network for search.');
+        const dataUrl = 'https://script.google.com/macros/s/AKfycbxgs6-WDBwD5JfLlUHIYfseS3MoQI6wqWBzS4aizs5N7kx7GhilrfB5sdmEpU9f_XD3/exec?action=data';
+        mangaListObservable = this.http.get<Item[]>(dataUrl).pipe(
+          tap(data => localStorage.setItem(fullListCacheKey, JSON.stringify(data)))
+        );
+      }
+    } else {
+      const dataUrl = 'https://script.google.com/macros/s/AKfycbxgs6-WDBwD5JfLlUHIYfseS3MoQI6wqWBzS4aizs5N7kx7GhilrfB5sdmEpU9f_XD3/exec?action=data';
+      mangaListObservable = this.http.get<Item[]>(dataUrl);
+    }
+
     // Use forkJoin to fetch both the full manga list and the daily manga info in parallel.
-    // This ensures we have all the data we need before trying to process it.
     forkJoin({
-      mangaList: this.http.get<Item[]>('https://script.google.com/macros/s/AKfycbxgs6-WDBwD5JfLlUHIYfseS3MoQI6wqWBzS4aizs5N7kx7GhilrfB5sdmEpU9f_XD3/exec?action=data'),
+      mangaList: mangaListObservable,
       dailyManga: this.http.get<any>('https://script.google.com/macros/s/AKfycbxgs6-WDBwD5JfLlUHIYfseS3MoQI6wqWBzS4aizs5N7kx7GhilrfB5sdmEpU9f_XD3/exec?action=daily')
     }).subscribe({
       next: ({ mangaList, dailyManga }) => {
         
-        // 1. Process the manga list to use a single, consistent title property.
-        const processedList = mangaList.map(item => {
-          const displayTitle = (item.eng_title && item.eng_title !== 'N/A') ? item.eng_title : item.title;
-          return { ...item, title: displayTitle };
-        });
+        // 1. Process the manga list to create a consistent display title.
+        const processedList = mangaList.map(item => ({
+          ...item,
+          title: (item.eng_title && item.eng_title !== 'N/A') ? item.eng_title : item.jp_title
+        }));
 
         // 2. Set the full item list, sorted alphabetically by the display title.
         this.fullItemList = processedList.sort((a, b) => a.title.localeCompare(b.title));
 
         // 3. Find the full details for the daily manga from the main list.
-        const titleToFind = (dailyManga.eng_title && dailyManga.eng_title !== "N/A") ? dailyManga.eng_title : dailyManga.title;
-        const dailyMangaDetails = this.fullItemList.find(item => item.title === titleToFind);
+        const dailyMangaDetails = this.fullItemList.find(item => item.jp_title === dailyManga.title);
         this.randomDailyManga.set(dailyMangaDetails);
         this.randomDailyMangaChapter = dailyManga.chapter;
 
