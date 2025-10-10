@@ -16,6 +16,12 @@
   --button-disabled-bg: #27272a; /* zinc-800 */
   --button-disabled-text: #71717a; /* zinc-500 */
   --button-disabled-border: #3f3f46; /* zinc-700 */
+  --answer-correct-bg: #14532d; /* green-900 */
+  --answer-correct-text: #dcfce7; /* green-100 */
+  --answer-correct-border: #22c55e; /* green-500 */
+  --answer-incorrect-bg: #7f1d1d; /* red-900 */
+  --answer-incorrect-text: #fee2e2; /* red-100 */
+  --answer-incorrect-border: #ef4444; /* red-500 */
 }
 
 .content-wrapper {
@@ -28,7 +34,7 @@
     flex-direction: column;
     align-items: center;
     width: 100%;
-    max-width: 900px;
+    max-width: 1800px;
     box-sizing: border-box;
 }
 
@@ -49,13 +55,38 @@
   color: var(--text-secondary, #6b7280);
 }
 
+.manga-panel-wrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.image-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  font-weight: 600;
+  z-index: 2;
+  border-radius: 4px; /* Match inner radius */
+}
+
+
 .recommendation-panels-container {
     display: flex;
     justify-content: center;
     gap: 24px;
     margin-bottom: 30px;
     flex-wrap: wrap;
-    width: 100%;
+    width: auto;
+    min-width: 230px;
 }
 
 .recommendation-item {
@@ -77,19 +108,104 @@
     padding: 8px;
     background-color: var(--card-bg, white);
     box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-    max-width: 250px; /* Adjusted for a larger size */
+    width: 230px;
+    height: 345px;
     flex-shrink: 0;
     position: relative;
     z-index: 1;
+    overflow: hidden;
 }
 
 .manga-panel-image {
     display: block;
     width: 100%;
-    height: auto;
+    height: 100%;
+    object-fit: cover;
 }
 
-.user-review-button {
+.synopsis-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 16px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+  overflow-y: auto;
+  border-radius: 4px;
+}
+
+.manga-panel-container:hover .synopsis-overlay {
+  opacity: 1;
+  visibility: visible;
+}
+
+.synopsis-text {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.base-manga-title-container {
+  margin-bottom: 24px;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-align: center;
+  width: auto;
+  max-width: 700px;
+  box-sizing: border-box;
+  background-color: #dcfce7; /* green-100 */
+  color: #166534; /* green-800 */
+  border: 2px solid #22c55e; /* green-500 */
+}
+:host-context(.dark) .base-manga-title-container {
+  background-color: var(--answer-correct-bg);
+  color: var(--answer-correct-text);
+  border-color: var(--answer-correct-border);
+}
+
+.base-manga-title-container.incorrect {
+  background-color: #fee2e2; /* red-100 */
+  color: #991b1b; /* red-800 */
+  border-color: #ef4444; /* red-500 */
+}
+:host-context(.dark) .base-manga-title-container.incorrect {
+  background-color: var(--answer-incorrect-bg);
+  color: var(--answer-incorrect-text);
+  border-color: var(--answer-incorrect-border);
+}
+
+.genre-theme-hint-container {
+  margin-bottom: 24px;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  text-align: center;
+  width: auto;
+  max-width: 700px;
+  box-sizing: border-box;
+  background-color: var(--input-bg, #f3f4f6);
+  border: 1px solid var(--input-border, #e5e7eb);
+  color: var(--text-secondary, #4b5563);
+}
+
+.genre-theme-hint-container p {
+  margin: 4px 0;
+}
+
+.hint-buttons-container {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.recommendation-hint-button {
   background-color: var(--button-secondary-bg, #fff);
   border: 2px solid var(--button-secondary-border, #374151);
   color: var(--button-secondary-text, #374151);
@@ -102,35 +218,21 @@
   padding: 0 20px;
 }
 
-.user-review-button:hover {
+.recommendation-hint-button:hover {
   background-color: var(--button-secondary-hover-bg, #374151);
   color: var(--button-secondary-hover-text, #fff);
 }
 
-.review-container {
-  background-color: var(--input-bg, #f9fafb);
-  border: 1px solid var(--input-border, #e5e7eb);
-  border-radius: 8px;
-  padding: 12px 16px;
-  width: 100%;
-  max-width: 250px; /* Match panel width */
-  box-sizing: border-box;
-  cursor: pointer;
-  text-align: left;
+.recommendation-hint-button:disabled {
+  background-color: #e5e7eb; /* gray-200 */
+  color: #9ca3af; /* gray-400 */
+  cursor: not-allowed;
+  border-color: #d1d5db; /* gray-300 */
 }
-
-.review-text {
-  font-size: 0.9rem;
-  color: var(--text-secondary, #4b5563);
-  margin: 0 0 8px 0;
-}
-
-.review-author {
-  font-style: italic;
-  text-align: right;
-  color: #6b7280; /* gray-500 */
-  color: var(--text-secondary, #6b7280);
-  margin: 0;
+:host-context(.dark) .recommendation-hint-button:disabled {
+  background-color: var(--button-disabled-bg);
+  color: var(--button-disabled-text);
+  border-color: var(--button-disabled-border);
 }
 
 /* Make the search component take up the width defined in its own CSS */
@@ -237,6 +339,14 @@ app-search {
   background-color: #16a34a; /* green-600 */
 }
 
+.submit-button.correct-guess {
+  background-color: #22c55e; /* green-500 */
+}
+
+.submit-button.correct-guess:hover {
+  background-color: #16a34a; /* green-600 */
+}
+
 /* --- Result Popups --- */
 .result-popup-backdrop {
     position: fixed;
@@ -288,6 +398,58 @@ app-search {
   transition: background-color 0.2s;
 }
 
+.popup-close-button.correct {
+  background-color: #22c55e; /* green-500 */
+}
+
+.popup-close-button.correct:hover {
+  background-color: #16a34a; /* green-600 */
+}
+
+.popup-close-button.incorrect {
+  background-color: #dc2626; /* red-600 */
+}
+
+.popup-close-button.incorrect:hover {
+  background-color: #b91c1c; /* red-700 */
+}
+
+.result-popup-content.correct {
+  border: 5px solid #22c55e; /* green-500 */
+}
+
+.result-popup-content.incorrect {
+  border: 5px solid #ef4444; /* red-500 */
+}
+
+.hint-popup-content {
+  background-color: var(--card-bg, white);
+  padding: 24px 32px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  text-align: center;
+  width: 90%;
+  max-width: 450px; /* A bit wider for the image */
+  position: relative;
+}
+
+.hint-popup-content h3 {
+  margin-top: 0;
+  color: var(--text-primary, #1f2937);
+}
+
+.hint-popup-content p {
+  color: var(--text-secondary, #6b7280);
+  margin-top: -10px;
+}
+
+.blurred-hint-image {
+  width: 100%;
+  max-width: 250px;
+  border-radius: 8px;
+  filter: blur(12px);
+  transition: filter 0.3s ease-in-out;
+}
 
 /* Dropdown List */
 .dropdown-list {

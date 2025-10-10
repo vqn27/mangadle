@@ -93,11 +93,19 @@ export class Search implements OnInit {
       dailyManga: this.http.get<any>('https://script.google.com/macros/s/AKfycbxgs6-WDBwD5JfLlUHIYfseS3MoQI6wqWBzS4aizs5N7kx7GhilrfB5sdmEpU9f_XD3/exec?action=daily')
     }).subscribe({
       next: ({ mangaList, dailyManga }) => {
-        // 1. Set the full list, sorted alphabetically.
-        this.fullItemList = mangaList.sort((a, b) => a.title.localeCompare(b.title));
+        
+        // 1. Process the manga list to use a single, consistent title property.
+        const processedList = mangaList.map(item => {
+          const displayTitle = (item.eng_title && item.eng_title !== 'N/A') ? item.eng_title : item.title;
+          return { ...item, title: displayTitle };
+        });
 
-        // 2. Find the full details for the daily manga from the main list.
-        const dailyMangaDetails = this.fullItemList.find(item => item.title === dailyManga.title);
+        // 2. Set the full item list, sorted alphabetically by the display title.
+        this.fullItemList = processedList.sort((a, b) => a.title.localeCompare(b.title));
+
+        // 3. Find the full details for the daily manga from the main list.
+        const titleToFind = (dailyManga.eng_title && dailyManga.eng_title !== "N/A") ? dailyManga.eng_title : dailyManga.title;
+        const dailyMangaDetails = this.fullItemList.find(item => item.title === titleToFind);
         this.randomDailyManga.set(dailyMangaDetails);
         this.randomDailyMangaChapter = dailyManga.chapter;
 
@@ -116,7 +124,7 @@ export class Search implements OnInit {
 
         console.log('Daily manga for today:', this.randomDailyManga());
         
-        // 3. Fetch the images for the daily manga.
+        // 4. Fetch the images for the daily manga.
         this.fetchMangaImagesDaily([dailyManga.img1, dailyManga.img2, dailyManga.img3]);
         // Turn off main loading indicator after initial data is fetched.
         // The image loader will have its own indicator.
