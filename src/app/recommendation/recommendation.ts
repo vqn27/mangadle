@@ -217,6 +217,11 @@ export class Recommendation implements OnInit {
           } else if (gameState === 'lost') {
             this.isGameLost.set(true);
             this.guessResult.set('incorrect');
+            const lastGuessKey = this.getLastGuessCacheKey(displayTitle);
+            const lastGuess = localStorage.getItem(lastGuessKey);
+            if (lastGuess) {
+              this.searchTerm.set(lastGuess);
+            }
           }
         }
 
@@ -280,9 +285,20 @@ export class Recommendation implements OnInit {
       if (this.selectedItem()?.title === this.randomManga()?.title) {
         this.guessResult.set('correct');
         this.isGameWon.set(true);
+        this.clearSearch(); // Clear input on correct guess
+        // Clear the cached guess on a correct answer
+        if (isPlatformBrowser(this.platformId)) {
+          const lastGuessKey = this.getLastGuessCacheKey(this.randomManga()!.title);
+          localStorage.removeItem(lastGuessKey);
+        }
       } else {
         this.guessResult.set('incorrect');
         this.isGameLost.set(true);
+        // Cache the incorrect guess
+        if (isPlatformBrowser(this.platformId)) {
+          const lastGuessKey = this.getLastGuessCacheKey(this.randomManga()!.title);
+          localStorage.setItem(lastGuessKey, this.searchTerm());
+        }
       }
     } finally {
       this.isSubmitting.set(false);
@@ -304,6 +320,13 @@ export class Recommendation implements OnInit {
    */
   private getStorageKey(title: string): string {
     return `mangadle-reccs-gameState-${title}`;
+  }
+
+  /**
+   * Generates a unique key for caching the last guess for a specific manga.
+   */
+  private getLastGuessCacheKey(title: string): string {
+    return `mangadle-reccs-lastGuess-${title}`;
   }
 
   /**

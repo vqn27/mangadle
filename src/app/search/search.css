@@ -165,7 +165,6 @@
   border-color: var(--button-disabled-border);
 }
 
-
 .panel-button.active {
   background-color: var(--button-secondary-hover-bg, #374151);
   color: var(--button-secondary-hover-text, #fff);
@@ -215,38 +214,33 @@
   background-color: #16a34a; /* green-600 */
 }
 
+.popup-close-button {
+  margin-top: 20px;
+  padding: 10px 20px;
+  border: none;
+  background-color: #3b82f6; /* blue-500 */
+  color: white;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.popup-close-button.correct {
+  background-color: #22c55e; /* green-500 */
+}
+
+.popup-close-button.incorrect {
+  background-color: #dc2626; /* red-600 */
+}
+
 .result-popup-content.correct {
   border: 5px solid #22c55e; /* green-500 */
 }
 
 .result-popup-content.incorrect {
   border: 5px solid #ef4444; /* red-500 */
-}
-
-.popup-correct-button-close-button {
-  margin-top: 20px;
-  padding: 10px 20px;
-  border: none;
-  background-color: #22c55e; /* green-500 */
-  color: white;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.popup-incorrect-button-close-button {
-  margin-top: 20px;
-  padding: 10px 20px;
-  border: none;
-  background-color: #ef4444; /* red-500 */
-  color: white;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s;
 }
 
 .dropdown-option.selected {

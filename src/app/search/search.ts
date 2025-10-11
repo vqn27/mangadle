@@ -33,7 +33,7 @@ export class Search implements OnInit {
   guessResult = signal<'correct' | 'incorrect' | null>(null);
   isSubmitting = signal(false);
   isGameWon = signal(false);
-  guessIncorrect = signal(false);
+  isGameLost = signal(false);
 
   // === Image Panel State ===
   panelImages: SafeUrl[] = [];
@@ -70,8 +70,6 @@ export class Search implements OnInit {
       // By reading searchTerm(), we create a dependency.
       // This effect will now re-run whenever the search term changes.
       this.searchTerm();
-      // When the user types, reset the incorrect guess state.
-      this.guessIncorrect.set(false);
     });
 
     // Effect to save the game state to localStorage when the game is won.
@@ -80,6 +78,8 @@ export class Search implements OnInit {
         const key = this.getStorageKey(this.randomDailyManga()!.title);
         if (isPlatformBrowser(this.platformId) && key) {
           localStorage.setItem(key, 'won');
+        } else if (this.isGameLost()) {
+          localStorage.setItem(key, 'lost');
         }
       }
     });
@@ -136,8 +136,14 @@ export class Search implements OnInit {
             this.isGameWon.set(true);
             this.guessResult.set('correct'); // Show the success popup immediately
           } else if (gameState === 'lost') {
-            this.guessIncorrect.set(true);
-            this.guessResult.set('incorrect'); // Show the incorrect popup immediately
+            // If game was already lost, we don't need to show the incorrect popup immediately,
+            this.isGameLost.set(true);
+            this.guessResult.set('incorrect');
+            const lastGuessKey = this.getLastGuessCacheKey(dailyManga.title);
+            const lastGuess = localStorage.getItem(lastGuessKey);
+            if (lastGuess) {
+              this.searchTerm.set(lastGuess);
+            }
           }
         }
 
@@ -232,14 +238,20 @@ export class Search implements OnInit {
       if (this.selectedItem()?.title === this.randomDailyManga()?.title) {
         this.guessResult.set('correct');
         this.isGameWon.set(true);
-        this.guessIncorrect.set(false);
+        this.isGameLost.set(false);
+        this.clearSearch(); // Clear input on correct guess
+        // Clear the cached guess on a correct answer
+        if (isPlatformBrowser(this.platformId)) {
+          const lastGuessKey = this.getLastGuessCacheKey(this.randomDailyManga()!.jp_title);
+          localStorage.removeItem(lastGuessKey);
+        }
       } else {
         this.guessResult.set('incorrect');
-        this.guessIncorrect.set(true);
-        // Set the 'lost' state in localStorage directly on an incorrect guess.
-        const key = this.getStorageKey(this.randomDailyManga()!.title);
-        if (isPlatformBrowser(this.platformId) && key) {
-          localStorage.setItem(key, 'lost');
+        this.isGameLost.set(true);
+        // Cache the incorrect guess
+        if (isPlatformBrowser(this.platformId)) {
+          const lastGuessKey = this.getLastGuessCacheKey(this.randomDailyManga()!.jp_title);
+          localStorage.setItem(lastGuessKey, this.searchTerm());
         }
       }
     } finally {
@@ -249,16 +261,7 @@ export class Search implements OnInit {
 
   closePopup(): void {
     // If the game is won, we don't reset the state.
-    // The popup will just close, but the inputs remain disabled.
-    if (this.isGameWon()) {
-      this.guessResult.set(null); // Just hide the popup
-      return;
-    }
-    // If the guess was incorrect, reset for the next attempt.
-    this.resetForNextGuess();
-  }
-
-  private resetForNextGuess(): void {
+    // The popup will just close, but the inputs remain disabled if the game is over.
     this.guessResult.set(null); // Hide the popup
   }
 
@@ -268,6 +271,13 @@ export class Search implements OnInit {
    */
   private getStorageKey(title: string): string {
     return `mangadle-gameState-${title}`;
+  }
+
+  /**
+   * Generates a unique key for caching the last guess for a specific manga.
+   */
+  private getLastGuessCacheKey(title: string): string {
+    return `mangadle-lastGuess-${title}`;
   }
 
   private fetchMangaImagesDaily(imageUrls: string[]): void {    
