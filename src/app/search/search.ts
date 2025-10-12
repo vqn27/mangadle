@@ -72,14 +72,17 @@ export class Search implements OnInit {
       this.searchTerm();
     });
 
-    // Effect to save the game state to localStorage when the game is won.
+    // Effect to save the game state to localStorage when the game is won or lost.
     effect(() => {
-      if (this.isGameWon() && this.randomDailyManga()) {
-        const key = this.getStorageKey(this.randomDailyManga()!.title);
+      const randomManga = this.randomDailyManga();
+      if (randomManga) {
+        const key = this.getStorageKey(randomManga.jp_title);
         if (isPlatformBrowser(this.platformId) && key) {
-          localStorage.setItem(key, 'won');
-        } else if (this.isGameLost()) {
-          localStorage.setItem(key, 'lost');
+          if (this.isGameWon()) {
+            localStorage.setItem(key, 'won');
+          } else if (this.isGameLost()) {
+            localStorage.setItem(key, 'lost');
+          }
         }
       }
     });
