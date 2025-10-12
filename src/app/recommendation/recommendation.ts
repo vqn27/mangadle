@@ -93,6 +93,22 @@ export class Recommendation implements OnInit {
         }
       }
     });
+
+    // Effect to save hint state to localStorage.
+    effect(() => {
+      const randomManga = this.randomManga();
+      if (randomManga && isPlatformBrowser(this.platformId)) {
+        const hintKey = this.getHintCacheKey(randomManga.title);
+        const hintsToCache = {
+          genreHint: this.isGenreHintVisible(),
+          blurredHint: this.isBlurredHintVisible()
+        };
+        // Only save if at least one hint has been used.
+        if (hintsToCache.genreHint || hintsToCache.blurredHint) {
+          localStorage.setItem(hintKey, JSON.stringify(hintsToCache));
+        }
+      }
+    });
   }
 
   ngOnInit() {
@@ -160,17 +176,17 @@ export class Recommendation implements OnInit {
         fullListObservable = of(JSON.parse(cachedFullList));
       } else {
         console.log('Fetching full manga list from network for recommendations.');
-        const dataUrl = 'https://script.google.com/macros/s/AKfycbxgs6-WDBwD5JfLlUHIYfseS3MoQI6wqWBzS4aizs5N7kx7GhilrfB5sdmEpU9f_XD3/exec?action=data';
+        const dataUrl = 'https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?action=data';
         fullListObservable = this.http.get<Item[]>(dataUrl).pipe(
           tap(data => localStorage.setItem(fullListCacheKey, JSON.stringify(data)))
         );
       }
     } else {
-      const dataUrl = 'https://script.google.com/macros/s/AKfycbxgs6-WDBwD5JfLlUHIYfseS3MoQI6wqWBzS4aizs5N7kx7GhilrfB5sdmEpU9f_XD3/exec?action=data';
+      const dataUrl = 'https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?action=data';
       fullListObservable = this.http.get<Item[]>(dataUrl);
     }
 
-    const reccsUrl = 'https://script.google.com/macros/s/AKfycbxgs6-WDBwD5JfLlUHIYfseS3MoQI6wqWBzS4aizs5N7kx7GhilrfB5sdmEpU9f_XD3/exec?action=dailyReccs';
+    const reccsUrl = 'https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?action=dailyReccs';
 
     forkJoin({
       fullList: fullListObservable,
@@ -226,6 +242,19 @@ export class Recommendation implements OnInit {
             const lastGuess = localStorage.getItem(lastGuessKey);
             if (lastGuess) {
               this.searchTerm.set(lastGuess);
+            }
+          }
+
+          // Load cached hints
+          const hintKey = this.getHintCacheKey(displayTitle);
+          const cachedHints = localStorage.getItem(hintKey);
+          if (cachedHints) {
+            const hints = JSON.parse(cachedHints);
+            if (hints.genreHint) {
+              this.isGenreHintVisible.set(hints.genreHint);
+            }
+            if (hints.blurredHint) {
+              this.isBlurredHintVisible.set(hints.blurredHint);
             }
           }
         }
@@ -334,23 +363,10 @@ export class Recommendation implements OnInit {
   }
 
   /**
-   * Fetches full manga details from the Jikan API by its ID.
-   * @param id The Jikan manga ID.
+   * Generates a unique key for caching hints for a specific manga.
    */
-  private getMangaFullById(rec_id: number): void {
-    const url = `https://api.jikan.moe/v4/manga/${rec_id}/full`;
-    this.http.get<any>(url).subscribe({
-      next: (response) => {
-        const synopsis = response.data.synopsis;
-        this.recommendations.update(recs => 
-          recs.map(rec => rec.rec_id === rec_id ? { ...rec, synopsis } : rec)
-        );
-        console.log(`Successfully fetched synopsis for manga ID: ${rec_id}`);
-      },
-      error: (err) => {
-        console.error(`Failed to fetch full details for manga ID: ${rec_id}`, err);
-      }
-    });
+  private getHintCacheKey(title: string): string {
+    return `mangadle-reccs-hints-${title}`;
   }
 
   private fetchRecommendationImages(): void {
@@ -369,7 +385,7 @@ export class Recommendation implements OnInit {
           return of(JSON.parse(cachedImage));
         }
       }
-      const url = `https://script.google.com/macros/s/AKfycbxgs6-WDBwD5JfLlUHIYfseS3MoQI6wqWBzS4aizs5N7kx7GhilrfB5sdmEpU9f_XD3/exec?url=${encodeURIComponent(imageUrl)}`;
+      const url = `https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?url=${encodeURIComponent(imageUrl)}`;
       return this.http.get<ImageResponse>(url);
     });
 

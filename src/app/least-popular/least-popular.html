@@ -1,5 +1,24 @@
 <div class="content-wrapper">
 
+  <!-- Result Popup -->
+  <div *ngIf="guessResult() === 'correct'" class="result-popup-backdrop" (click)="closePopup()">
+    <div class="result-popup-content correct" (click)="$event.stopPropagation()">
+      <h2>Congratulations! 🎉</h2>
+      <p>You guessed the correct manga!</p>
+      <p>The answer was: <strong>{{ dailyData()?.baseTitle }}</strong></p>
+      <button class="popup-close-button correct" (click)="closePopup()">Play Again Tomorrow</button>
+    </div>
+  </div>
+
+  <!-- Incorrect Guess Popup -->
+  <div *ngIf="guessResult() === 'incorrect'" class="result-popup-backdrop" (click)="closePopup()">
+    <div class="result-popup-content incorrect" (click)="$event.stopPropagation()">
+      <h2>Incorrect! 🤔</h2>
+      <p>The correct manga is <strong>{{ dailyData()?.baseTitle }}</strong>!</p>
+      <button class="popup-close-button incorrect" (click)="closePopup()">Try Again Tomorrow</button>
+    </div>
+  </div>
+
   <h1 class="title">Guess by the Least Popular Characters</h1>
 
   <div *ngIf="isLoading()" class="loading-container">
@@ -7,37 +26,37 @@
   </div>
 
   <ng-container *ngIf="!isLoading()">
-    <div class="recommendation-panels-container">
-      <div class="recommendation-item">
-        <div class="manga-panel-container">
-          <img 
-            src="https://placehold.co/230x345/000000/FFFFFF?text=1" 
-            alt="Recommendation Panel 1" 
-            class="manga-panel-image">
+    <div class="character-panels-container">
+      @for (char of dailyData()?.characters; track char.id; let i = $index) {
+        <div class="character-card">
+          <div class="character-image-container">
+            <img [src]="char.imageUrl" [alt]="char.name" class="character-image" [class.blur]="i > 0 && !unblurredStates()[i]" (contextmenu)="$event.preventDefault()" draggable="false">
+          </div>
+          <div class="character-details">
+            <h3 class="character-name" [class.blur-text]="i > 0 && !unblurredStates()[i]">{{ char.name }}</h3>
+            <p class="character-favorites">
+              <span class="heart-icon">❤️</span> {{ char.favorites.toLocaleString() }}
+            </p>
+          </div>
+          @if (i > 0) {
+            <button class="unblur-button" (click)="unblurImage(i)" [disabled]="unblurredStates()[i] || (i > 1 && !unblurredStates()[i-1])">
+              @if (i > 1 && !unblurredStates()[i-1]) {
+                <span>🔒 </span>
+              }
+              Unblur
+            </button>
+          }
         </div>
-        <h3 class="panel-title">Manga Title 1</h3>
-      </div>
-      <div class="recommendation-item">
-        <div class="manga-panel-container">
-          <img src="https://placehold.co/230x345/000000/FFFFFF?text=2" alt="Recommendation Panel 2" class="manga-panel-image">
-        </div>
-        <h3 class="panel-title">Manga Title 2</h3>
-      </div>
-      <div class="recommendation-item">
-        <div class="manga-panel-container">
-          <img src="https://placehold.co/230x345/000000/FFFFFF?text=3" alt="Recommendation Panel 3" class="manga-panel-image">
-        </div>
-        <h3 class="panel-title">Manga Title 3</h3>
-      </div>
+      }
     </div>
-  
-    <button *ngIf="!isHintRevealed()" class="recommendation-hint-button" (click)="showHint()">Hint: Score & Popularity</button>
-  
-    <div *ngIf="isHintRevealed()" class="hint-text-container">
-      <p>Score: 8.75</p>
-      <p>Popularity: #42</p>
+
+    <div *ngIf="isGameWon() || isGameLost()"
+         class="answer-container"
+         [class.correct-answer]="isGameWon()"
+         [class.incorrect-answer]="isGameLost()">
+      Manga: {{ dailyData()?.baseTitle }}
     </div>
-  
+
     <!-- The main searchable dropdown component -->
     <div class="search-wrapper">
         <div class="search-dropdown-container">
@@ -51,11 +70,12 @@
                 (ngModelChange)="searchTerm.set($event); isDropdownOpen.set(true)"
                 (focus)="onInputFocus()"
                 (blur)="onInputBlur()"
+                [disabled]="isGameWon() || isGameLost()"
                 class="search-input"
               >
-              <button *ngIf="searchTerm()" (click)="clearSearch()" class="clear-button" type="button">&times;</button>
+              <button *ngIf="searchTerm() && !isGameWon() && !isGameLost()" (click)="clearSearch()" class="clear-button" type="button">&times;</button>
             </div>
-            <button class="submit-button">
+            <button class="submit-button" (click)="checkGuess()" [disabled]="isSubmitting() || isGameWon() || isGameLost()" [class.correct-guess]="isGameWon()" [class.incorrect-guess]="isGameLost()">
               Guess
             </button>
           </div>

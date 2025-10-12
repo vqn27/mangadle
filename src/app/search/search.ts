@@ -87,6 +87,22 @@ export class Search implements OnInit {
       }
     });
 
+    // Effect to save hint state to localStorage.
+    effect(() => {
+      const randomManga = this.randomDailyManga();
+      if (randomManga && isPlatformBrowser(this.platformId)) {
+        const hintKey = this.getHintCacheKey(randomManga.jp_title);
+        const hintsToCache = {
+          highestPanel: this.highestPanelRevealed(),
+          scoreHint: this.isHintRevealed()
+        };
+        // Only save if at least one hint has been used to avoid empty cache items.
+        if (hintsToCache.highestPanel > 1 || hintsToCache.scoreHint) {
+          localStorage.setItem(hintKey, JSON.stringify(hintsToCache));
+        }
+      }
+    });
+
   }
 
   ngOnInit() {
@@ -100,20 +116,20 @@ export class Search implements OnInit {
         mangaListObservable = of(JSON.parse(cachedMangaList));
       } else {
         console.log('Fetching full manga list from network for search.');
-        const dataUrl = 'https://script.google.com/macros/s/AKfycbxgs6-WDBwD5JfLlUHIYfseS3MoQI6wqWBzS4aizs5N7kx7GhilrfB5sdmEpU9f_XD3/exec?action=data';
+        const dataUrl = 'https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?action=data';
         mangaListObservable = this.http.get<Item[]>(dataUrl).pipe(
           tap(data => localStorage.setItem(fullListCacheKey, JSON.stringify(data)))
         );
       }
     } else {
-      const dataUrl = 'https://script.google.com/macros/s/AKfycbxgs6-WDBwD5JfLlUHIYfseS3MoQI6wqWBzS4aizs5N7kx7GhilrfB5sdmEpU9f_XD3/exec?action=data';
+      const dataUrl = 'https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?action=data';
       mangaListObservable = this.http.get<Item[]>(dataUrl);
     }
 
     // Use forkJoin to fetch both the full manga list and the daily manga info in parallel.
     forkJoin({
       mangaList: mangaListObservable,
-      dailyManga: this.http.get<any>('https://script.google.com/macros/s/AKfycbxgs6-WDBwD5JfLlUHIYfseS3MoQI6wqWBzS4aizs5N7kx7GhilrfB5sdmEpU9f_XD3/exec?action=daily')
+      dailyManga: this.http.get<any>('https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?action=daily')
     }).subscribe({
       next: ({ mangaList, dailyManga }) => {
         
@@ -151,6 +167,19 @@ export class Search implements OnInit {
             const lastGuess = localStorage.getItem(lastGuessKey);
             if (lastGuess) {
               this.searchTerm.set(lastGuess);
+            }
+          }
+
+          // Load cached hints
+          const hintKey = this.getHintCacheKey(dailyManga.title);
+          const cachedHints = localStorage.getItem(hintKey);
+          if (cachedHints) {
+            const hints = JSON.parse(cachedHints);
+            if (hints.highestPanel) {
+              this.highestPanelRevealed.set(hints.highestPanel);
+            }
+            if (hints.scoreHint) {
+              this.isHintRevealed.set(hints.scoreHint);
             }
           }
         }
@@ -287,6 +316,13 @@ export class Search implements OnInit {
     return `mangadle-lastGuess-${title}`;
   }
 
+  /**
+   * Generates a unique key for caching hints for a specific manga.
+   */
+  private getHintCacheKey(title: string): string {
+    return `mangadle-search-hints-${title}`;
+  }
+
   private fetchMangaImagesDaily(imageUrls: string[]): void {    
     interface ImageResponse {
       data: string; // Base64 encoded image data
@@ -305,7 +341,7 @@ export class Search implements OnInit {
       }
 
       // If not in cache or not in browser, fetch it
-      const url = `https://script.google.com/macros/s/AKfycbxgs6-WDBwD5JfLlUHIYfseS3MoQI6wqWBzS4aizs5N7kx7GhilrfB5sdmEpU9f_XD3/exec?url=${encodeURIComponent(imageUrl)}`;
+      const url = `https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?url=${encodeURIComponent(imageUrl)}`;
       return this.http.get<ImageResponse>(url);
     });
 

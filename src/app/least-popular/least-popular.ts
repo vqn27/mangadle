@@ -1,9 +1,9 @@
-import { Component, signal, computed, inject, OnInit, PLATFORM_ID } from '@angular/core';
+import { Component, signal, computed, inject, OnInit, PLATFORM_ID, effect } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { Item } from '../item.model';
-import { Observable, of } from 'rxjs';
+import { Item, Character, LeastPopularData } from '../item.model';
+import { Observable, of, forkJoin } from 'rxjs';
 import { tap } from 'rxjs/operators';
 
 @Component({
@@ -14,7 +14,7 @@ import { tap } from 'rxjs/operators';
     FormsModule     // Enables [(ngModel)]
   ],
   templateUrl: './least-popular.html',
-  styleUrls: ['./least-popular.css']
+  styleUrls: ['./least-popular.css', '../shared-styles.css']
 })
 export class LeastPopularComponent implements OnInit {
   private http = inject(HttpClient);
@@ -26,10 +26,22 @@ export class LeastPopularComponent implements OnInit {
   isHintRevealed = signal(false);
   isLoading = signal(true);
 
+  // === Game State ===
+  guessResult = signal<'correct' | 'incorrect' | null>(null);
+  isSubmitting = signal(false);
+  isGameWon = signal(false);
+  isGameLost = signal(false);
+
   // === Data State ===
   fullItemList: Item[] = []; // Start with an empty list
 
   selectedItem = signal<Item | undefined>(undefined);
+
+  // Game-specific data
+  dailyData = signal<LeastPopularData | undefined>(undefined);
+
+  // State for unblurring character images
+  unblurredStates = signal<{ [key: number]: boolean }>({});
 
   /**
    * Computed signal to filter the list in real-time based on the searchTerm.
@@ -47,6 +59,34 @@ export class LeastPopularComponent implements OnInit {
       item.title.toLowerCase().includes(term)
     );
   });
+
+  constructor() {
+    // Effect to save the game state to localStorage when the game is won or lost.
+    effect(() => {
+      const dailyData = this.dailyData();
+      if (dailyData) {
+        const key = this.getStorageKey(dailyData.baseTitle);
+        if (isPlatformBrowser(this.platformId) && key) {
+          if (this.isGameWon()) {
+            localStorage.setItem(key, 'won');
+          } else if (this.isGameLost()) {
+            localStorage.setItem(key, 'lost');
+          }
+        }
+      }
+    });
+
+    // Effect to save unblurred states to localStorage.
+    effect(() => {
+      const dailyData = this.dailyData();
+      const states = this.unblurredStates(); // Read the signal to create a dependency
+      // Check if unblurredStates is not empty before saving
+      if (dailyData && Object.keys(states).length > 0 && isPlatformBrowser(this.platformId)) {
+        const hintKey = this.getHintCacheKey(dailyData.baseTitle);
+        localStorage.setItem(hintKey, JSON.stringify(states));
+      }
+    });
+  }
 
   ngOnInit() {
     this.fetchMangaData();
@@ -93,39 +133,163 @@ export class LeastPopularComponent implements OnInit {
   }
 
   /**
+   * Marks a specific character image as unblurred.
+   */
+  unblurImage(index: number): void {
+    this.unblurredStates.update(states => ({ ...states, [index]: true }));
+  }
+
+  /**
+   * Checks if the user's selected manga matches the daily manga.
+   */
+  checkGuess(): void {
+    if (!this.selectedItem() || !this.dailyData() || this.isSubmitting()) {
+      return;
+    }
+
+    this.isSubmitting.set(true);
+
+    try {
+      if (this.selectedItem()?.title === this.dailyData()?.baseTitle) {
+        this.guessResult.set('correct');
+        this.isGameWon.set(true);
+        // Cache the correct guess
+        if (isPlatformBrowser(this.platformId)) {
+          const lastGuessKey = this.getLastGuessCacheKey(this.dailyData()!.baseTitle);
+          localStorage.setItem(lastGuessKey, this.searchTerm());
+        }
+      } else {
+        this.guessResult.set('incorrect');
+        this.isGameLost.set(true);
+        // Cache the incorrect guess
+        if (isPlatformBrowser(this.platformId)) {
+          const lastGuessKey = this.getLastGuessCacheKey(this.dailyData()!.baseTitle);
+          localStorage.setItem(lastGuessKey, this.searchTerm());
+        }
+      }
+    } finally {
+      this.isSubmitting.set(false);
+    }
+  }
+
+  /**
+   * Closes the result popup.
+   */
+  closePopup(): void {
+    this.guessResult.set(null); // Just hide the popup
+  }
+
+  /**
+   * Generates a unique key for localStorage based on the manga title.
+   */
+  private getStorageKey(title: string): string {
+    return `mangadle-least-popular-gameState-${title}`;
+  }
+
+  /**
+   * Generates a unique key for caching the last guess for a specific manga.
+   */
+  private getLastGuessCacheKey(title: string): string {
+    return `mangadle-least-popular-lastGuess-${title}`;
+  }
+
+  /**
+   * Generates a unique key for caching hints for a specific manga.
+   */
+  private getHintCacheKey(title: string): string {
+    return `mangadle-least-popular-hints-${title}`;
+  }
+
+  /**
    * Fetches data from the Google Apps Script URL.
    */
   private fetchMangaData(): void {
-    const fullListCacheKey = 'mangadle-fullItemList';
-    let dataObservable: Observable<Item[]>;
+    const fullListCacheKey = 'mangadle-fullItemList'; // Shared cache key
+    let fullListObservable: Observable<Item[]>;
 
     if (isPlatformBrowser(this.platformId)) {
       const cachedData = localStorage.getItem(fullListCacheKey);
       if (cachedData) {
         console.log('Loading full manga list from cache for least-popular.');
-        dataObservable = of(JSON.parse(cachedData));
+        fullListObservable = of(JSON.parse(cachedData));
       } else {
         console.log('Fetching full manga list from network for least-popular.');
-        const url = 'https://script.google.com/macros/s/AKfycbxgs6-WDBwD5JfLlUHIYfseS3MoQI6wqWBzS4aizs5N7kx7GhilrfB5sdmEpU9f_XD3/exec?action=data';
-        dataObservable = this.http.get<Item[]>(url).pipe(
+        const dataUrl = 'https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?action=data';
+        fullListObservable = this.http.get<Item[]>(dataUrl).pipe(
           tap(data => localStorage.setItem(fullListCacheKey, JSON.stringify(data)))
         );
       }
     } else {
-      const url = 'https://script.google.com/macros/s/AKfycbxgs6-WDBwD5JfLlUHIYfseS3MoQI6wqWBzS4aizs5N7kx7GhilrfB5sdmEpU9f_XD3/exec?action=data';
-      dataObservable = this.http.get<Item[]>(url);
+      const dataUrl = 'https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?action=data';
+      fullListObservable = this.http.get<Item[]>(dataUrl);
     }
 
-    dataObservable.subscribe({
-      next: (data) => {
-        // Process the list to create a consistent display title.
-        const processedData = data.map(item => ({
+    const leastPopularUrl = 'https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?action=dailyLeastPopular';
+
+    forkJoin({
+      fullList: fullListObservable,
+      dailyData: this.http.get<any>(leastPopularUrl)
+    }).subscribe({
+      next: ({ fullList, dailyData }) => {
+        // 1. Process the manga list to use a single, consistent title property.
+        const processedList = fullList.map(item => ({
           ...item,
           title: (item.eng_title && item.eng_title !== 'N/A') ? item.eng_title : item.jp_title
         }));
-        const sortedData = processedData.sort((a, b) => a.title.localeCompare(b.title));
+        const sortedData = processedList.sort((a, b) => a.title.localeCompare(b.title));
         this.fullItemList = sortedData;
-        console.log('Successfully fetched and sorted data for least-popular characters.');
+
+        // Find the base manga in the processed list to get its proper display title
+        const baseMangaFromList = processedList.find(item => item.jp_title === dailyData.base_title || item.eng_title === dailyData.base_title);
+        const displayTitle = baseMangaFromList ? baseMangaFromList.title : dailyData.base_title;
+
+        // 2. Process the daily character data
+        const characters: Character[] = [];
+        for (let i = 1; i <= 5; i++) { // Assuming up to 5 characters
+          if (dailyData[`char_name_${i}`]) {
+            characters.push({
+              id: dailyData[`char_id_${i}`],
+              name: dailyData[`char_name_${i}`],
+              favorites: dailyData[`char_favorites_${i}`],
+              imageUrl: dailyData[`char_image_url_${i}`]
+            });
+          }
+        }
+
+        this.dailyData.set({
+          baseTitle: displayTitle,
+          baseId: dailyData.base_id,
+          characters: characters
+        });
+
+        // 3. Check for cached game state
+        if (isPlatformBrowser(this.platformId)) {
+          const key = this.getStorageKey(displayTitle);
+          const gameState = localStorage.getItem(key);
+          if (gameState === 'won') {
+            this.isGameWon.set(true);
+            this.guessResult.set('correct');
+          } else if (gameState === 'lost') {
+            this.isGameLost.set(true);
+            this.guessResult.set('incorrect');
+          }
+
+          // Load last guess if game is over
+          if (gameState) {
+            const lastGuessKey = this.getLastGuessCacheKey(displayTitle);
+            const lastGuess = localStorage.getItem(lastGuessKey);
+            if (lastGuess) this.searchTerm.set(lastGuess);
+          }
+
+          // Load cached unblurred states
+          const hintKey = this.getHintCacheKey(displayTitle);
+          const cachedUnblurredStates = localStorage.getItem(hintKey);
+          if (cachedUnblurredStates) {
+            this.unblurredStates.set(JSON.parse(cachedUnblurredStates));
+          }
+        }
+
+        console.log('Successfully fetched and processed data for least-popular game.');
         this.isLoading.set(false);
       },
       error: (err) => {

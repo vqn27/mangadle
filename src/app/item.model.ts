@@ -21,3 +21,16 @@ export interface baseRandomRec {
   base_genres: string;
   base_themes: string;
 }
+
+export interface Character {
+  id: number;
+  name: string;
+  favorites: number;
+  imageUrl: string;
+}
+
+export interface LeastPopularData {
+  baseTitle: string;
+  baseId: number;
+  characters: Character[];
+}
