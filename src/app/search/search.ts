@@ -135,6 +135,11 @@ export class Search implements OnInit {
           if (gameState === 'won') {
             this.isGameWon.set(true);
             this.guessResult.set('correct'); // Show the success popup immediately
+            const lastGuessKey = this.getLastGuessCacheKey(dailyManga.title);
+            const lastGuess = localStorage.getItem(lastGuessKey);
+            if (lastGuess) {
+              this.searchTerm.set(lastGuess);
+            }
           } else if (gameState === 'lost') {
             // If game was already lost, we don't need to show the incorrect popup immediately,
             this.isGameLost.set(true);
@@ -239,11 +244,10 @@ export class Search implements OnInit {
         this.guessResult.set('correct');
         this.isGameWon.set(true);
         this.isGameLost.set(false);
-        this.clearSearch(); // Clear input on correct guess
-        // Clear the cached guess on a correct answer
+        // Cache the correct guess
         if (isPlatformBrowser(this.platformId)) {
           const lastGuessKey = this.getLastGuessCacheKey(this.randomDailyManga()!.jp_title);
-          localStorage.removeItem(lastGuessKey);
+          localStorage.setItem(lastGuessKey, this.searchTerm());
         }
       } else {
         this.guessResult.set('incorrect');

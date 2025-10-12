@@ -214,6 +214,11 @@ export class Recommendation implements OnInit {
           if (gameState === 'won') {
             this.isGameWon.set(true);
             this.guessResult.set('correct');
+            const lastGuessKey = this.getLastGuessCacheKey(displayTitle);
+            const lastGuess = localStorage.getItem(lastGuessKey);
+            if (lastGuess) {
+              this.searchTerm.set(lastGuess);
+            }
           } else if (gameState === 'lost') {
             this.isGameLost.set(true);
             this.guessResult.set('incorrect');
@@ -285,11 +290,10 @@ export class Recommendation implements OnInit {
       if (this.selectedItem()?.title === this.randomManga()?.title) {
         this.guessResult.set('correct');
         this.isGameWon.set(true);
-        this.clearSearch(); // Clear input on correct guess
-        // Clear the cached guess on a correct answer
+        // Cache the correct guess
         if (isPlatformBrowser(this.platformId)) {
           const lastGuessKey = this.getLastGuessCacheKey(this.randomManga()!.title);
-          localStorage.removeItem(lastGuessKey);
+          localStorage.setItem(lastGuessKey, this.searchTerm());
         }
       } else {
         this.guessResult.set('incorrect');
