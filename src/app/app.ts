@@ -10,6 +10,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
     <div class="app-container">
       <nav class="sidebar">
         <div class="sidebar-header">
+          <img src="logo.png" alt="Mangadle Logo" class="sidebar-logo" width="32" height="32">
           <h2 class="sidebar-title">Mangadle</h2>
         </div>
         <a routerLink="/" 
@@ -102,6 +103,12 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
       margin-bottom: 24px;
       padding-bottom: 16px;
       border-bottom: 1px solid var(--sidebar-border);
+    }
+
+    .sidebar-logo {
+      width: 32px;
+      height: 32px;
+      margin-right: 12px;
     }
 
     .dark-mode-button {
