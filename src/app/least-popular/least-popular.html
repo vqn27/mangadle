@@ -35,7 +35,7 @@
           <div class="character-details">
             <h3 class="character-name" [class.blur-text]="i > 0 && !unblurredStates()[i]">{{ char.name }}</h3>
             <p class="character-favorites">
-              <span class="heart-icon">❤️</span> {{ char.favorites.toLocaleString() }}
+              <span class="heart-icon">Favorite: ❤️</span> {{ char.favorites.toLocaleString() }}
             </p>
           </div>
           @if (i > 0) {
