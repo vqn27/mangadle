@@ -35,10 +35,6 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
         <router-outlet></router-outlet>
         <!-- Debug button to clear cache -->
 
-        <!-- <button class="debug-button" (click)="clearCache()">
-          <span class="sidebar-link-icon">🗑️</span>
-          <span class="sidebar-link-text">Clear Cache</span>
-        </button> -->
         
       </main>
     </div>
@@ -123,11 +119,6 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
       transition: background-color 0.2s, color 0.2s, border-color 0.2s;
     }
 
-    .dark-mode-button:hover {
-      background-color: var(--theme-toggle-hover-bg);
-      color: var(--theme-toggle-hover-text);
-    }
-
     .sidebar-title {
       font-size: 1.8rem;
       font-weight: 700;
@@ -203,7 +194,8 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
         border-radius: 0;
       }
       main {
-        padding: 20px;
+        /* Add extra top padding to make space for the absolute-positioned dark mode button */
+        padding: 80px 20px 20px 20px;
       }
     }
 
