@@ -27,7 +27,11 @@
 
   <ng-container *ngIf="!isLoading()">
     <div *ngIf="isBlurredHintVisible()" class="blurred-hint-container" (contextmenu)="$event.preventDefault()">
-      <img [src]="randomManga()?.imageUrl" [alt]="randomManga()?.title" class="blurred-hint-image" draggable="false">
+      <img 
+        [src]="randomManga()?.imageUrl" 
+        [alt]="randomManga()?.title" 
+        class="blurred-hint-image" 
+        [class.unblurred]="isGameWon() || isGameLost()" draggable="false">
     </div>
 
     <div *ngIf="areImagesLoading()" class="image-loading-overlay">
@@ -50,12 +54,12 @@
       }
     </div>
   
-    <div *ngIf="isGameWon()" class="base-manga-title-container">
-      Recommendations based on: <strong>{{ randomManga()?.title }}</strong>
-    </div>
-
-    <div *ngIf="isGameLost()" class="base-manga-title-container incorrect">
-      The correct answer was: <strong>{{ randomManga()?.title }}</strong>
+    <div *ngIf="isGameWon() || isGameLost()"
+         class="answer-container"
+         [class.correct-answer]="isGameWon()"
+         [class.incorrect-answer]="isGameLost()">
+      <span *ngIf="isGameWon()">Recommendations based on: <strong>{{ randomManga()?.title }}</strong></span>
+      <span *ngIf="isGameLost()">The correct answer was: <strong>{{ randomManga()?.title }}</strong></span>
     </div>
 
     <div *ngIf="isGenreHintVisible()" class="genre-theme-hint-container">
