@@ -8,37 +8,6 @@
     z-index: 40; /* Below the enlarged panel */
 }
 
-.result-popup-backdrop {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-color: rgba(0, 0, 0, 0.6);
-    z-index: 100;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.result-popup-content {
-  background-color: var(--card-bg, white);
-  padding: 24px 32px;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-  text-align: center;
-  width: 90%;
-  max-width: 400px;
-}
-
-.result-popup-content h2 {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: var(--text-primary, #1f2937);
-  margin-top: 0;
-  margin-bottom: 8px;
-}
-
 .result-popup-content p {
   margin: 4px 0;
   color: var(--text-secondary, #4b5563);
@@ -82,39 +51,8 @@
 }
 
 .answer-container {
-  margin-top: -16px; /* Pull it up a bit */
-  margin-bottom: 24px;
-  padding: 12px 20px;
-  border-radius: 8px;
-  font-size: 1.2rem;
-  font-weight: 700;
-  text-align: center;
-  width: 100%;
+  margin-top: -16px; /* Specific to this component */
   max-width: 420px; /* Match panel width */
-  box-sizing: border-box;
-  border: 2px solid;
-}
-
-.answer-container.correct-answer {
-  background-color: #dcfce7; /* green-100 */
-  color: #166534; /* green-800 */
-  border-color: #22c55e; /* green-500 */
-}
-:host-context(.dark) .answer-container.correct-answer {
-  background-color: var(--answer-correct-bg);
-  color: var(--answer-correct-text);
-  border-color: var(--answer-correct-border);
-}
-
-.answer-container.incorrect-answer {
-  background-color: #fee2e2; /* red-100 */
-  color: #991b1b; /* red-800 */
-  border-color: #ef4444; /* red-500 */
-}
-:host-context(.dark) .answer-container.incorrect-answer {
-  background-color: var(--answer-incorrect-bg);
-  color: var(--answer-incorrect-text);
-  border-color: var(--answer-incorrect-border);
 }
 
 .manga-panel-container.enlarged {
@@ -215,35 +153,6 @@
 
 .submit-button.correct-guess:hover {
   background-color: #16a34a; /* green-600 */
-}
-
-.popup-close-button {
-  margin-top: 20px;
-  padding: 10px 20px;
-  border: none;
-  background-color: #3b82f6; /* blue-500 */
-  color: white;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.popup-close-button.correct {
-  background-color: #22c55e; /* green-500 */
-}
-
-.popup-close-button.incorrect {
-  background-color: #dc2626; /* red-600 */
-}
-
-.result-popup-content.correct {
-  border: 5px solid #22c55e; /* green-500 */
-}
-
-.result-popup-content.incorrect {
-  border: 5px solid #ef4444; /* red-500 */
 }
 
 .dropdown-option.selected {

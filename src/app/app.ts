@@ -179,6 +179,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
       position: relative; /* For absolute positioning of the button */
       flex-grow: 1;
       padding: 40px;
+      background-color: var(--bg-color);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -199,9 +200,11 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
       }
     }
 
-    /* Global style to remove default body margin */
+    /* Global styles for the body */
     ::ng-deep body {
       margin: 0;
+      background-color: var(--bg-color);
+      transition: background-color 0.3s ease;
     }
   `]
 })

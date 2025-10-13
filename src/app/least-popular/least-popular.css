@@ -29,6 +29,7 @@
     align-items: center;
     width: 100%;
     max-width: 1800px;
+    min-height: 100%;
     box-sizing: border-box;
 }
 
@@ -263,20 +264,6 @@ app-search {
   background-color: #b91c1c; /* red-700 */
 }
 
-/* --- Result Popups --- */
-.result-popup-backdrop {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-color: rgba(0, 0, 0, 0.6);
-    z-index: 100;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
 .result-popup-content {
   background-color: var(--card-bg, white);
   padding: 24px 32px;
@@ -300,20 +287,6 @@ app-search {
   color: var(--text-secondary, #4b5563);
   font-size: 1rem;
 }
-
-.popup-close-button {
-  margin-top: 20px;
-  padding: 10px 20px;
-  border: none;
-  background-color: #3b82f6; /* blue-500 */
-  color: white;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
 
 /* Dropdown List */
 .dropdown-list {
