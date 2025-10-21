@@ -14,7 +14,7 @@
 <div *ngIf="guessResult() === 'incorrect'" class="result-popup-backdrop" (click)="closePopup()">
   <div class="result-popup-content incorrect" (click)="$event.stopPropagation()">
     <h2>Incorrect! 🤔</h2>
-    <p>The correct manga is {{ randomDailyManga()?.title }}!</p>
+    <p>The correct manga is <strong>{{ randomDailyManga()?.title }}</strong>!</p>
     <p>These pages appear in chapter {{ randomDailyMangaChapter}}</p>
     <button class="popup-close-button incorrect" (click)="closePopup()">Try Again Tomorrow</button>
   </div>
