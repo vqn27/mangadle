@@ -3,8 +3,8 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Item, Character, LeastPopularData } from '../item.model';
-import { Observable, of, forkJoin } from 'rxjs';
-import { tap } from 'rxjs/operators';
+import { forkJoin } from 'rxjs';
+import { MangaDataService } from '../manga-data.service';
 
 @Component({
   selector: 'app-least-popular',
@@ -19,6 +19,7 @@ import { tap } from 'rxjs/operators';
 export class LeastPopularComponent implements OnInit {
   private http = inject(HttpClient);
   private platformId = inject(PLATFORM_ID);
+  private mangaDataService = inject(MangaDataService);
 
   // === UI State ===
   searchTerm = signal('');
@@ -204,31 +205,9 @@ export class LeastPopularComponent implements OnInit {
    * Fetches data from the Google Apps Script URL.
    */
   private fetchMangaData(): void {
-    const fullListCacheKey = 'mangadle-fullItemList'; // Shared cache key
-    let fullListObservable: Observable<Item[]>;
-
-    if (isPlatformBrowser(this.platformId)) {
-      const cachedData = localStorage.getItem(fullListCacheKey);
-      if (cachedData) {
-        console.log('Loading full manga list from cache for least-popular.');
-        fullListObservable = of(JSON.parse(cachedData));
-      } else {
-        console.log('Fetching full manga list from network for least-popular.');
-        const dataUrl = 'https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?action=data';
-        fullListObservable = this.http.get<Item[]>(dataUrl).pipe(
-          tap(data => localStorage.setItem(fullListCacheKey, JSON.stringify(data)))
-        );
-      }
-    } else {
-      const dataUrl = 'https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?action=data';
-      fullListObservable = this.http.get<Item[]>(dataUrl);
-    }
-
-    const leastPopularUrl = 'https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?action=dailyLeastPopular';
-
     forkJoin({
-      fullList: fullListObservable,
-      dailyData: this.http.get<any>(leastPopularUrl)
+      fullList: this.mangaDataService.getFullMangaList(),
+      dailyData: this.mangaDataService.getLeastPopularGame()
     }).subscribe({
       next: ({ fullList, dailyData }) => {
         // 1. Process the manga list to use a single, consistent title property.
@@ -240,25 +219,25 @@ export class LeastPopularComponent implements OnInit {
         this.fullItemList = sortedData;
 
         // Find the base manga in the processed list to get its proper display title
-        const baseMangaFromList = processedList.find(item => item.jp_title === dailyData.base_title || item.eng_title === dailyData.base_title);
-        const displayTitle = baseMangaFromList ? baseMangaFromList.title : dailyData.base_title;
+        const baseMangaFromList = processedList.find(item => item.jp_title === dailyData.baseTitle || item.eng_title === dailyData.baseTitle);
+        const displayTitle = baseMangaFromList ? baseMangaFromList.title : dailyData.baseTitle;
 
         // 2. Process the daily character data
         const characters: Character[] = [];
         for (let i = 1; i <= 5; i++) { // Assuming up to 5 characters
-          if (dailyData[`char_name_${i}`]) {
+          if ((dailyData as any)[`char_name_${i}`]) {
             characters.push({
-              id: dailyData[`char_id_${i}`],
-              name: dailyData[`char_name_${i}`],
-              favorites: dailyData[`char_favorites_${i}`],
-              imageUrl: dailyData[`char_image_url_${i}`]
+              id: (dailyData as any)[`char_id_${i}`],
+              name: (dailyData as any)[`char_name_${i}`],
+              favorites: (dailyData as any)[`char_favorites_${i}`],
+              imageUrl: (dailyData as any)[`char_image_url_${i}`]
             });
           }
         }
 
         this.dailyData.set({
           baseTitle: displayTitle,
-          baseId: dailyData.base_id,
+          baseId: dailyData.baseId,
           characters: characters
         });
 

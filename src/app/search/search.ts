@@ -1,18 +1,20 @@
-import { Component, signal, computed, inject, OnInit, effect, PLATFORM_ID } from '@angular/core';
+import { Component, signal, computed, inject, OnInit, effect, PLATFORM_ID, Renderer2 } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { forkJoin, of, Observable } from 'rxjs';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
-import { Item } from '../item.model';
-import { tap } from 'rxjs/operators';
-
+import { Item, RecommendationsData, HistoryEntry } from '../item.model';
+import { MangaDataService } from '../manga-data.service';
+import { DbService } from '../db.service';
 @Component({
   selector: 'app-search',
   standalone: true, // Modern Angular format
   imports: [
     CommonModule,   // Enables *ngIf, @for
-    FormsModule     // Enables [(ngModel)]
+    FormsModule,    // Enables [(ngModel)]
+    
   ],
   templateUrl: './search.html',
   styleUrls: ['./search.css', '../shared-styles.css']
@@ -21,6 +23,11 @@ export class Search implements OnInit {
   private http = inject(HttpClient);
   private sanitizer = inject(DomSanitizer);
   private platformId = inject(PLATFORM_ID);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  private renderer = inject(Renderer2);
+  private dbService = inject(DbService);
+  private mangaDataService = inject(MangaDataService);
 
   // === UI State ===
   searchTerm = signal('');
@@ -34,6 +41,8 @@ export class Search implements OnInit {
   isSubmitting = signal(false);
   isGameWon = signal(false);
   isGameLost = signal(false);
+  isHistoricGame = signal(false);
+  gameDateText = signal('');
 
   // === Image Panel State ===
   panelImages: SafeUrl[] = [];
@@ -42,11 +51,24 @@ export class Search implements OnInit {
   // === Data State ===
   fullItemList: Item[] = []; // Start with an empty list
 
+  private gameHistory: HistoryEntry[] = [];
+  private currentDateIndex = -1;
   selectedItem = signal<Item | undefined>(undefined);
 
   // Random Daily Manga
   randomDailyManga = signal<Item | undefined>(undefined);
   randomDailyMangaChapter = 0;
+
+  /**
+   * Computed signals to determine if navigation arrows should be disabled.
+   */
+  isFirstDay = computed(() => this.currentDateIndex <= 0);
+  isLastDay = computed(() => {
+    // The "last" playable day is the one before the final entry in our history list.
+    // The final entry is reserved for the *next* day's game.
+    // Since getGameHistory() already removes the "next day" entry, the last item is the current day.
+    return this.currentDateIndex >= this.gameHistory.length - 1;
+  });
 
   /**
    * Computed signal to filter the list in real-time based on the searchTerm.
@@ -72,6 +94,15 @@ export class Search implements OnInit {
       this.searchTerm();
     });
 
+    // Effect to add/remove a class to the body when the dropdown opens/closes.
+    // This is used to prevent page scrolling.
+    effect(() => {
+      if (isPlatformBrowser(this.platformId)) {
+        const action = this.isDropdownOpen() ? 'addClass' : 'removeClass';
+        this.renderer[action](document.body, 'dropdown-open');
+      }
+    });
+
     // Effect to save the game state to localStorage when the game is won or lost.
     effect(() => {
       const randomManga = this.randomDailyManga();
@@ -94,10 +125,10 @@ export class Search implements OnInit {
         const hintKey = this.getHintCacheKey(randomManga.jp_title);
         const hintsToCache = {
           highestPanel: this.highestPanelRevealed(),
-          scoreHint: this.isHintRevealed()
+          isHintRevealed: this.isHintRevealed()
         };
         // Only save if at least one hint has been used to avoid empty cache items.
-        if (hintsToCache.highestPanel > 1 || hintsToCache.scoreHint) {
+        if (hintsToCache.highestPanel > 1 || hintsToCache.isHintRevealed) {
           localStorage.setItem(hintKey, JSON.stringify(hintsToCache));
         }
       }
@@ -106,64 +137,53 @@ export class Search implements OnInit {
   }
 
   ngOnInit() {
-    const fullListCacheKey = 'mangadle-fullItemList';
-    let mangaListObservable: Observable<Item[]>;
-
-    if (isPlatformBrowser(this.platformId)) {
-      const cachedMangaList = localStorage.getItem(fullListCacheKey);
-      if (cachedMangaList) {
-        console.log('Loading full manga list from cache for search.');
-        mangaListObservable = of(JSON.parse(cachedMangaList));
-      } else {
-        console.log('Fetching full manga list from network for search.');
-        const dataUrl = 'https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?action=data';
-        mangaListObservable = this.http.get<Item[]>(dataUrl).pipe(
-          tap(data => localStorage.setItem(fullListCacheKey, JSON.stringify(data)))
-        );
-      }
-    } else {
-      const dataUrl = 'https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?action=data';
-      mangaListObservable = this.http.get<Item[]>(dataUrl);
+    // Check if we are playing a historical game from the URL parameter
+    const gameDate = this.route.snapshot.paramMap.get('date');
+    if (gameDate) {
+      this.isHistoricGame.set(true);
     }
 
-    // Use forkJoin to fetch both the full manga list and the daily manga info in parallel.
     forkJoin({
-      mangaList: mangaListObservable,
-      dailyManga: this.http.get<any>('https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?action=daily')
+      mangaList: this.mangaDataService.getFullMangaList(),
+      gameData: this.mangaDataService.getMangaPanelGame(gameDate),
+      history: this.mangaDataService.getGameHistory()
     }).subscribe({
-      next: ({ mangaList, dailyManga }) => {
-        
+      next: ({ mangaList, gameData, history }) => {
         // 1. Process the manga list to create a consistent display title.
-        const processedList = mangaList.map(item => ({
+        const processedList = mangaList.map((item: Item) => ({
           ...item,
           title: (item.eng_title && item.eng_title !== 'N/A') ? item.eng_title : item.jp_title
         }));
 
         // 2. Set the full item list, sorted alphabetically by the display title.
-        this.fullItemList = processedList.sort((a, b) => a.title.localeCompare(b.title));
+        this.fullItemList = processedList.sort((a: Item, b: Item) => a.title.localeCompare(b.title));
 
         // 3. Find the full details for the daily manga from the main list.
-        const dailyMangaDetails = this.fullItemList.find(item => item.jp_title === dailyManga.title);
+        const dailyMangaDetails = this.fullItemList.find(item => item.jp_title === gameData.title);
         this.randomDailyManga.set(dailyMangaDetails);
-        this.randomDailyMangaChapter = dailyManga.chapter;
+        this.gameDateText.set(gameData.date);
+        this.gameHistory = history;
+        // Find the index of the current game in the chronological history
+        this.currentDateIndex = this.gameHistory.findIndex(entry => entry.date === gameData.date);
+
+        this.randomDailyMangaChapter = gameData.chapter;
 
         // Check if the game for today has already been won.
         if (isPlatformBrowser(this.platformId)) {
-          const key = this.getStorageKey(dailyManga.title);
+          const key = this.getStorageKey(gameData.title);
           const gameState = localStorage.getItem(key);
           if (gameState === 'won') {
             this.isGameWon.set(true);
-            this.guessResult.set('correct'); // Show the success popup immediately
-            const lastGuessKey = this.getLastGuessCacheKey(dailyManga.title);
+            this.guessResult.set('correct');
+            const lastGuessKey = this.getLastGuessCacheKey(gameData.title);
             const lastGuess = localStorage.getItem(lastGuessKey);
             if (lastGuess) {
               this.searchTerm.set(lastGuess);
             }
           } else if (gameState === 'lost') {
-            // If game was already lost, we don't need to show the incorrect popup immediately,
             this.isGameLost.set(true);
             this.guessResult.set('incorrect');
-            const lastGuessKey = this.getLastGuessCacheKey(dailyManga.title);
+            const lastGuessKey = this.getLastGuessCacheKey(gameData.title);
             const lastGuess = localStorage.getItem(lastGuessKey);
             if (lastGuess) {
               this.searchTerm.set(lastGuess);
@@ -171,15 +191,15 @@ export class Search implements OnInit {
           }
 
           // Load cached hints
-          const hintKey = this.getHintCacheKey(dailyManga.title);
+          const hintKey = this.getHintCacheKey(gameData.title);
           const cachedHints = localStorage.getItem(hintKey);
           if (cachedHints) {
             const hints = JSON.parse(cachedHints);
             if (hints.highestPanel) {
               this.highestPanelRevealed.set(hints.highestPanel);
             }
-            if (hints.scoreHint) {
-              this.isHintRevealed.set(hints.scoreHint);
+            if (hints.isHintRevealed) {
+              this.isHintRevealed.set(hints.isHintRevealed);
             }
           }
         }
@@ -187,7 +207,7 @@ export class Search implements OnInit {
         console.log('Daily manga for today:', this.randomDailyManga());
         
         // 4. Fetch the images for the daily manga.
-        this.fetchMangaImagesDaily([dailyManga.img1, dailyManga.img2, dailyManga.img3]);
+        this.fetchMangaImagesDaily([gameData.img1, gameData.img2, gameData.img3]);
         // Turn off main loading indicator after initial data is fetched.
         // The image loader will have its own indicator.
         this.isLoading.set(false);
@@ -198,6 +218,27 @@ export class Search implements OnInit {
         this.isLoading.set(false);
       }
     });
+  }
+
+  /**
+   * Navigates to the game history page.
+   */
+  navigateToHistory(): void {
+    this.router.navigate(['/history']);
+  }
+
+  navigateToDay(offset: number): void {
+    if (this.isLoading() || this.gameHistory.length === 0) return;
+
+    const newIndex = this.currentDateIndex + offset;
+    if (newIndex >= 0 && newIndex < this.gameHistory.length) {
+      const newDate = this.gameHistory[newIndex].date;
+      // Using navigateByUrl to force a full component reload for the new game date.
+      // This is simpler than trying to manually reset all component state.
+      this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
+        this.router.navigate(['/game', newDate]);
+      });
+    }
   }
 
   /**
@@ -328,46 +369,42 @@ export class Search implements OnInit {
       data: string; // Base64 encoded image data
       mimetype: string;
       url: string;
+      blob?: Blob; // Add optional blob property
     }
     this.areImagesLoading.set(true);
     
     const imageObservables: Observable<ImageResponse>[] = imageUrls.map(imageUrl => {
-      if (isPlatformBrowser(this.platformId)) {
-        const cachedImage = localStorage.getItem(imageUrl);
-        if (cachedImage) {
-          // If image is in cache, return it as an observable
-          return of(JSON.parse(cachedImage));
-        }
-      }
-
-      // If not in cache or not in browser, fetch it
-      const url = `https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?url=${encodeURIComponent(imageUrl)}`;
-      return this.http.get<ImageResponse>(url);
+      // This observable will first try to get the image from IndexedDB,
+      // and if it's not there, it will fetch it from the network.
+      return new Observable(subscriber => {
+        this.dbService.getImage(imageUrl).then(cachedBlob => {
+          if (cachedBlob) {
+            // If we have a cached blob, we're done.
+            subscriber.next({ data: '', mimetype: cachedBlob.type, url: imageUrl, blob: cachedBlob });
+            subscriber.complete();
+          } else {
+            // If not in cache, fetch from the network proxy.
+            const networkUrl = `https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?url=${encodeURIComponent(imageUrl)}`;
+            this.http.get<ImageResponse>(networkUrl).subscribe({
+              next: res => {
+                const imageBlob = this.b64toBlob(res.data, res.mimetype);
+                // Store the new blob in IndexedDB for next time.
+                this.dbService.setImage(imageUrl, imageBlob);
+                subscriber.next({ ...res, blob: imageBlob });
+                subscriber.complete();
+              },
+              error: err => subscriber.error(err)
+            });
+          }
+        });
+      });
     });
 
     forkJoin(imageObservables).subscribe({
       next: (responses) => {
-        this.panelImages = responses.map((res, index) => {
-          // Save to cache if it wasn't there before
-          if (isPlatformBrowser(this.platformId)) {
-            const originalUrl = imageUrls[index];
-            if (!localStorage.getItem(originalUrl)) {
-              try {
-                localStorage.setItem(originalUrl, JSON.stringify(res));
-              } catch (e) {
-                console.error('Failed to cache image. Storage may be full.', e);
-                // Clear old game data if storage is full
-                if (e instanceof DOMException && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED')) {
-                  this.clearOldCache();
-                  // We don't retry caching in this same cycle to avoid loops
-                }
-              }
-            }
-          }
-
-          // Convert Base64 to a safe URL
-          const imageBlob = this.b64toBlob(res.data, res.mimetype);
-          const objectUrl = URL.createObjectURL(imageBlob);
+        this.panelImages = responses.map(res => {
+          // Create a temporary URL for the blob to display in the <img> tag.
+          const objectUrl = URL.createObjectURL(res.blob!);
           return this.sanitizer.bypassSecurityTrustUrl(objectUrl);
         });
 
@@ -375,7 +412,7 @@ export class Search implements OnInit {
         console.log('Successfully loaded all daily manga images (from cache or network).');
       },
       error: (err) => {
-        console.error('Failed to fetch one or more daily manga images:', err);
+        console.error('Failed to fetch one or more daily manga images from IndexedDB or network:', err);
       },
     }).add(() => {
       // Turn off image-specific loading indicator.
@@ -388,8 +425,8 @@ export class Search implements OnInit {
 
     console.warn('Clearing old Mangadle cache to free up space.');
     Object.keys(localStorage).forEach(key => {
-      // Clear game state and image caches, but not the dark mode preference
-      if (key.startsWith('mangadle-gameState-') || key.startsWith('http')) {
+      // Clear game state, but not the dark mode preference or the full item list
+      if (key.startsWith('mangadle-gameState-') || key.startsWith('mangadle-lastGuess-') || key.startsWith('mangadle-search-hints-')) {
         localStorage.removeItem(key);
       }
     });

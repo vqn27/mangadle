@@ -1,6 +1,7 @@
 import { Component, HostBinding, signal, effect, inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Router, NavigationEnd, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { filter } from 'rxjs/operators';
 
 @Component({
   selector: 'app-root',
@@ -15,8 +16,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
         </div>
         <a routerLink="/" 
            class="sidebar-link" 
-           routerLinkActive="active" 
-           [routerLinkActiveOptions]="{exact: true}">
+           [class.active]="isMangaPanelRouteActive()">
           <span class="sidebar-link-icon">🖼️</span>
           <span class="sidebar-link-text">Guess by Manga Panel</span>
         </a>
@@ -218,10 +218,22 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 export class App {
   private platformId = inject(PLATFORM_ID);
   private readonly darkModeKey = 'mangadle-dark-mode';
+  private router = inject(Router);
 
   isDarkMode = signal<boolean>(this.getInitialDarkMode());
+  isMangaPanelRouteActive = signal(false);
 
   constructor() {
+    // Effect to check the current route and highlight the correct sidebar link.
+    this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd)
+    ).subscribe((event: NavigationEnd) => {
+      // The "Manga Panel" link should be active for the root URL or any historical game URL.
+      const url = event.urlAfterRedirects;
+      const isActive = url === '/' || url.startsWith('/game/') || url === '/history';
+      this.isMangaPanelRouteActive.set(isActive);
+    });
+
     // This effect will run whenever `isDarkMode` changes, saving the preference.
     effect(() => {
       if (isPlatformBrowser(this.platformId)) {

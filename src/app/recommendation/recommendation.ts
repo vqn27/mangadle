@@ -4,8 +4,9 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { forkJoin, of, Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
-import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
-import { Item, Recommendations, baseRandomRec } from '../item.model';
+import { DomSanitizer } from '@angular/platform-browser';
+import { Item, Recommendations, baseRandomRec, RecommendationsData } from '../item.model';
+import { MangaDataService } from '../manga-data.service';
 
 
 @Component({
@@ -22,6 +23,7 @@ export class Recommendation implements OnInit {
   private http = inject(HttpClient);
   private platformId = inject(PLATFORM_ID);
   private sanitizer = inject(DomSanitizer);
+  private mangaDataService = inject(MangaDataService);
   private renderer = inject(Renderer2);
 
   // === UI State ===
@@ -166,36 +168,14 @@ export class Recommendation implements OnInit {
    * Fetches data from the Google Apps Script URL.
    */
   private fetchMangaData(): void {
-    const fullListCacheKey = 'mangadle-fullItemList';
-    let fullListObservable: Observable<Item[]>;
-
-    if (isPlatformBrowser(this.platformId)) {
-      const cachedFullList = localStorage.getItem(fullListCacheKey);
-      if (cachedFullList) {
-        console.log('Loading full manga list from cache for recommendations.');
-        fullListObservable = of(JSON.parse(cachedFullList));
-      } else {
-        console.log('Fetching full manga list from network for recommendations.');
-        const dataUrl = 'https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?action=data';
-        fullListObservable = this.http.get<Item[]>(dataUrl).pipe(
-          tap(data => localStorage.setItem(fullListCacheKey, JSON.stringify(data)))
-        );
-      }
-    } else {
-      const dataUrl = 'https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?action=data';
-      fullListObservable = this.http.get<Item[]>(dataUrl);
-    }
-
-    const reccsUrl = 'https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?action=dailyReccs';
-
     forkJoin({
-      fullList: fullListObservable,
-      dailyReccs: this.http.get<any>(reccsUrl)
+      fullList: this.mangaDataService.getFullMangaList(),
+      dailyReccs: this.mangaDataService.getRecommendationsGame()
     }).subscribe({
       next: ({ fullList, dailyReccs }) => {
         // Create a dictionary mapping jp_title to eng_title from the full list
         this.titleMap = fullList.reduce((acc, item) => {
-          if (item.jp_title && item.eng_title && item.eng_title !== 'N/A') {
+          if (item.jp_title && item.eng_title && item.eng_title !== 'N/A' && item.eng_title) {
             acc[item.jp_title] = item.eng_title;
           }
           return acc;
@@ -204,7 +184,7 @@ export class Recommendation implements OnInit {
         // Process the manga list to use a single, consistent title property.
         const processedList = fullList.map(item => ({
           ...item,
-          title: (item.eng_title && item.eng_title !== 'N/A') ? item.eng_title : item.jp_title
+          title: (item.eng_title && item.eng_title !== 'N/A' && item.eng_title) ? item.eng_title : item.jp_title
         }));
 
         // Set the full item list, sorted alphabetically by the display title.
@@ -274,9 +254,9 @@ export class Recommendation implements OnInit {
         // If no cached recommendations, create them from the fetched data
         if (recommendationsToSet.length === 0) {
           for (let i = 1; i <= 12; i++) { // Assuming up to 12 recommendations
-            const jp_title = dailyReccs[`rec_title_${i}`];
-            const imageUrl = dailyReccs[`rec_image_url_${i}`];
-            const synopsis = dailyReccs[`rec_synopsis_${i}`];
+            const jp_title = (dailyReccs as any)[`rec_title_${i}`];
+            const imageUrl = (dailyReccs as any)[`rec_image_url_${i}`];
+            const synopsis = (dailyReccs as any)[`rec_synopsis_${i}`];
 
             // Use the title map to find the English title, otherwise use the Japanese title
             const title = (jp_title && this.titleMap[jp_title]) ? this.titleMap[jp_title] : jp_title;

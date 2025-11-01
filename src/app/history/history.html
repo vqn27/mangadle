@@ -1,0 +1,30 @@
+<div class="content-wrapper">
+  <h1 class="title">Game History</h1>
+
+  @if (isLoading()) {
+    <div class="loading-container">
+      <p>Loading history...</p>
+    </div>
+  } @else if (error()) {
+    <div class="error-container">
+      <p>{{ error() }}</p>
+    </div>
+  } @else {
+    <div class="history-grid">
+      @for (entry of paginatedHistory(); track entry.date; let i = $index) {
+        <button class="history-button" (click)="playHistoryGame(entry.date)" [class.guessed]="isGameGuessed(entry)">
+          <span class="history-button-day">Day {{ ((currentPage() - 1) * itemsPerPage) + i + 1 }}</span>
+          <span class="history-button-date">{{ entry.date }}</span>
+        </button>
+      }
+    </div>
+
+    @if (totalPages() > 1) {
+      <div class="pagination-controls">
+        <button class="pagination-button" (click)="previousPage()" [disabled]="currentPage() === 1">Previous</button>
+        <span class="pagination-text">Page {{ currentPage() }} of {{ totalPages() }}</span>
+        <button class="pagination-button" (click)="nextPage()" [disabled]="currentPage() === totalPages()">Next</button>
+      </div>
+    }
+  }
+</div>

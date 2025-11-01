@@ -28,16 +28,26 @@
   </div>
 
   <ng-container *ngIf="!isLoading()">
-    <div class="manga-panel-wrapper">
-      <div *ngIf="areImagesLoading()" class="image-loading-overlay">
-        <p>Loading panels...</p>
+    <div class="game-area">
+      <div *ngIf="gameDateText()" class="date-navigator">
+        <button class="nav-arrow" (click)="navigateToDay(-1)" [disabled]="isFirstDay()">&#9664;</button>
+        <button class="game-date-text" (click)="navigateToHistory()">
+          {{ gameDateText() }}
+        </button>
+        <button class="nav-arrow" (click)="navigateToDay(1)" [disabled]="isLastDay()">&#9654;</button>
       </div>
-      <div class="manga-panel-container" [class.enlarged]="isEnlarged()" (click)="toggleEnlarged($event)">
-        <img 
-          [src]="currentPanelUrl()" 
-          alt="Manga Panel to guess" 
-          class="manga-panel-image"
-        >
+
+      <div class="manga-panel-wrapper">
+        <div *ngIf="areImagesLoading()" class="image-loading-overlay">
+          <p>Loading panels...</p>
+        </div>
+        <div class="manga-panel-container" [class.enlarged]="isEnlarged()" (click)="toggleEnlarged($event)">
+          <img 
+            [src]="currentPanelUrl()" 
+            alt="Manga Panel to guess" 
+            class="manga-panel-image"
+          >
+        </div>
       </div>
     </div>
 

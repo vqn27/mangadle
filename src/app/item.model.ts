@@ -15,6 +15,21 @@ export interface Recommendations {
   synopsis?: string;
 }
 
+export interface HistoryEntry {
+  date: string;
+  title: string;
+  jp_title: string;
+  image: string;
+  score: number;
+  popularity: number;
+  gameMode: string;
+}
+
+export interface RecommendationsData extends baseRandomRec {
+  base_title: string;
+  base_image_url: string;
+}
+
 export interface baseRandomRec {
   title: string;
   imageUrl: string;
