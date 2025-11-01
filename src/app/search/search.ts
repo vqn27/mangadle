@@ -160,6 +160,12 @@ export class Search implements OnInit {
 
         // 3. Find the full details for the daily manga from the main list.
         const dailyMangaDetails = this.fullItemList.find(item => item.jp_title === gameData.title);
+        if (!dailyMangaDetails) {
+          console.error(`Could not find details for manga with title: ${gameData.title}`);
+          this.isLoading.set(false);
+          return; // Stop processing if the daily manga can't be found
+        }
+
         this.randomDailyManga.set(dailyMangaDetails);
         this.gameDateText.set(gameData.date);
         this.gameHistory = history;
@@ -191,7 +197,7 @@ export class Search implements OnInit {
           }
 
           // Load cached hints
-          const hintKey = this.getHintCacheKey(gameData.title);
+          const hintKey = this.getHintCacheKey(dailyMangaDetails.jp_title);
           const cachedHints = localStorage.getItem(hintKey);
           if (cachedHints) {
             const hints = JSON.parse(cachedHints);
