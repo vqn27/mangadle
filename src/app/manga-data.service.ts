@@ -48,7 +48,7 @@ export class MangaDataService {
       map(response => {
         const values = response.values || [];
         return values
-          .filter(row => row && (row[2] || row[3])) // Filter out empty rows
+          .filter(row => row && row[2]) // Filter out rows that don't have at least a Japanese title
           .map(row => ({
             jp_title: row[2],
             eng_title: row[3],
