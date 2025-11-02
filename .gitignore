@@ -44,3 +44,6 @@ Thumbs.db
 
 # Google Script Apps
 .google-app-script/*
+
+# Environment files
+/src/environments/*.ts
