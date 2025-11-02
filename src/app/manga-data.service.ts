@@ -4,7 +4,6 @@ import { isPlatformBrowser } from '@angular/common';
 import { Observable, of, shareReplay } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
 import { Item, LeastPopularData, RecommendationsData, HistoryEntry, TraitsData } from './item.model';
-import { environment } from '../environments/environment';
 
 @Injectable({
   providedIn: 'root',
