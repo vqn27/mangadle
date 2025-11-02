@@ -1,4 +1,14 @@
 /* Shared styles for search and recommendation components */
+:host-context(:not(.dark)) {
+  --card-bg: #ffffff;
+  --card-border: #e2e8f0;
+  --text-primary: #1f2937;
+  --text-secondary: #4b5563;
+  --input-bg: #fff;
+  --input-border: #d1d5db;
+  --input-text: #1f2937;
+}
+
 :host-context(.dark) {
   --card-bg: #27272a; /* zinc-800 */
   --card-border: #3f3f46; /* zinc-700 */

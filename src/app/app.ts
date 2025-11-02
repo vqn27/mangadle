@@ -28,6 +28,10 @@ import { filter } from 'rxjs/operators';
           <span class="sidebar-link-icon">📉</span>
           <span class="sidebar-link-text">Guess by Least Popular Characters</span>
         </a>
+        <a routerLink="/traits" class="sidebar-link" routerLinkActive="active">
+          <span class="sidebar-link-icon">🧠</span>
+          <span class="sidebar-link-text">Guess by Character Traits</span>
+        </a>
       </nav>
       <main>
         <button class="dark-mode-button" (click)="toggleDarkMode()">

@@ -49,3 +49,14 @@ export interface LeastPopularData {
   baseId: number;
   characters: Character[];
 }
+
+export interface TraitsData {
+  baseTitle: string;
+  baseId: number;
+  characterName: string;
+  hairColor: string;
+  gender: string;
+  animeTitle: string;
+  imageUrl: string;
+  tags: string[];
+}

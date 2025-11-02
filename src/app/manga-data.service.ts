@@ -1,28 +1,33 @@
 import { Injectable, inject, PLATFORM_ID } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { isPlatformBrowser } from '@angular/common';
-import { Observable, of, shareReplay, throwError } from 'rxjs';
+import { Observable, of, shareReplay } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
-import { Item, LeastPopularData, RecommendationsData, HistoryEntry } from './item.model';
+import { Item, LeastPopularData, RecommendationsData, HistoryEntry, TraitsData } from './item.model';
+import { environment } from '../environments/environment';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class MangaDataService {
   private http = inject(HttpClient);
   private platformId = inject(PLATFORM_ID);
 
-  private readonly SPREADSHEET_ID = '1Wrsei4H72bpPTVINrTfBsFCGNEFESDIBfz7VkDJcDgQ';
-  private readonly API_KEY = 'AIzaSyAoAs8FDaXIXftX8g9qSnbG8s8KFLFHAJI';
-  private readonly DATA_RANGE = `'Mangadle Data'!A2:N`;
-  private readonly FULL_LIST_URL = `https://sheets.googleapis.com/v4/spreadsheets/${this.SPREADSHEET_ID}/values/${this.DATA_RANGE}?key=${this.API_KEY}`;
-
-  // Google Apps Script URLs for game data (as they handle randomization)
   private readonly DAILY_RECCS_URL = 'https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?action=dailyReccs';
   private readonly DAILY_LEAST_POPULAR_URL = 'https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?action=dailyLeastPopular';
+  private readonly DAILY_TRAITS_URL = 'https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?action=dailyCharacterTraits';
+  private readonly CHARACTER_NAMES_URL = '/character_names.csv';
+
+  private readonly DATA_RANGE = `'Mangadle Data'!A2:N`;
+  private readonly FULL_LIST_URL = `https://sheets.googleapis.com/v4/spreadsheets/${environment.spreadsheetId}/values/${this.DATA_RANGE}?key=${environment.sheetApiKey}`;
+
+
+  // Google Apps Script URLs for game data (as they handle randomization)
+  
 
   private fullMangaList$: Observable<Item[]> | null = null;
   private gameHistory$: Observable<HistoryEntry[]> | null = null;
+  private characterNames$: Observable<string[]> | null = null;
 
   /**
    * Fetches the full list of manga from the Google Sheet, with caching.
@@ -146,5 +151,37 @@ export class MangaDataService {
    */
   getLeastPopularGame(): Observable<LeastPopularData> {
     return this.http.get<LeastPopularData>(this.DAILY_LEAST_POPULAR_URL);
+  }
+
+  /**
+   * Fetches the data for the daily "Guess by Traits" game.
+   */
+  getTraitsGame(): Observable<TraitsData> {
+    return this.http.get<TraitsData>(this.DAILY_TRAITS_URL);
+  }
+
+  /**
+   * Fetches the list of character names from a local CSV file.
+   */
+  getCharacterNames(): Observable<string[]> {
+    const characterNamesCacheKey = 'mangadle-characterNameList';
+
+    if (this.characterNames$) {
+      return this.characterNames$;
+    }
+
+    if (isPlatformBrowser(this.platformId)) {
+      const cachedData = localStorage.getItem(characterNamesCacheKey);
+      if (cachedData) {
+        return of(JSON.parse(cachedData));
+      }
+    }
+
+    this.characterNames$ = this.http.get(this.CHARACTER_NAMES_URL, { responseType: 'text' }).pipe(
+      map(csvText => csvText.split('\n').map(name => name.trim()).filter(name => name)),
+      tap(names => localStorage.setItem(characterNamesCacheKey, JSON.stringify(names))),
+      shareReplay(1)
+    );
+    return this.characterNames$;
   }
 }

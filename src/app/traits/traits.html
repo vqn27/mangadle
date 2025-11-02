@@ -1,0 +1,145 @@
+<div class="content-wrapper">
+  <h1 class="title">Guess the Character by Their Traits</h1>
+
+  <!-- Loading Spinner -->
+  @if (isLoading()) {
+    <div class="loading-container">
+      <p>Loading character with their traits...</p>
+    </div>
+  }
+  
+  <!-- Main Game Content -->
+  @if (!isLoading() && dailyData(); as data) {
+    <div class="game-content-wrapper">
+
+
+
+      <!-- Character Image -->
+      <div class="character-image-container">
+        <div class="character-image-wrapper" (click)="unblurImage()">
+          <img 
+            [src]="data.imageUrl" 
+            alt="Character" 
+            class="character-image"
+            [class.blur]="!isImageUnblurred()"
+            draggable="false"
+            (contextmenu)="$event.preventDefault()" />
+        </div>
+      </div>
+
+      <!-- Static Traits List -->
+      <div class="static-traits-list">
+          <div class="static-trait-item"><strong>Gender: </strong> {{ data.gender }}</div>
+          <div class="static-trait-item"><strong>Hair Color: </strong> {{ data.hairColor }}</div>
+      </div>
+
+      <hr class="trait-separator">
+  
+      <!-- Character Traits Grid -->
+      <div class="traits-grid">
+        @for (tag of data.tags; track tag; let i = $index) {
+          <div 
+            class="trait-card" 
+            [class.blur]="i > 0 && !unblurredTags()[i]" 
+            [class.locked]="i > 1 && !unblurredTags()[i-1]"
+            (click)="i > 0 && !unblurredTags()[i] && (i === 1 || unblurredTags()[i-1]) && unblurTag(i)"
+            >
+            @if (i > 1 && !unblurredTags()[i-1]) {
+              <span class="lock-emoji">🔒</span>
+            }
+            <span class="tag-text">{{ tag }}</span>
+          </div>
+        }
+      </div>
+
+      <!-- Hint for the source title -->
+      <div class="source-hint-container">
+        @if (!isSourceHintRevealed()) {
+          <button class="hint-button" (click)="showSourceHint()">Hint: Source</button>
+        } @else {
+          <div class="source-title-box">
+            <strong>Source: </strong> 
+            <span>{{ data.baseTitle || data.animeTitle }}</span>
+          </div>
+        }
+      </div>
+  
+      @if (isGameWon() || isGameLost()) {
+        <div
+             class="answer-container"
+             [class.correct-answer]="isGameWon()"
+             [class.incorrect-answer]="isGameLost()">
+          The correct answer was: <strong>{{ data.characterName }}</strong>
+        </div>
+      }
+
+      <!-- Search and Guess Section -->
+      <div class="search-container">
+        <div class="search-bar">
+          <div class="input-wrapper">
+            <input 
+              type="text" 
+              class="search-input" 
+              placeholder="Type a character's name..."
+              [disabled]="isGameWon() || isGameLost()"
+              [class.disabled]="isGameWon() || isGameLost()"
+              [(ngModel)]="searchTerm"
+              (focus)="onInputFocus()"
+              (blur)="onInputBlur()"
+              (input)="isDropdownOpen.set(true)"
+            /> 
+            @if (searchTerm() && !isGameWon() && !isGameLost()) {
+              <button class="clear-button" (click)="clearSearch()">×</button>
+            }
+          </div>
+          <!-- Submit Button -->
+          <button 
+            class="submit-button" 
+            (click)="checkGuess()" 
+            [disabled]="!selectedCharacter() || isSubmitting() || isGameWon() || isGameLost()"
+            [class.correct-guess]="isGameWon()"
+            [class.incorrect-guess]="isGameLost()">
+            @if (isSubmitting()) {
+              <span>Submitting...</span>
+            } @else {
+              <span>Guess</span>
+            }
+          </button>
+        </div>
+        <!-- Dropdown List -->
+        @if (isDropdownOpen() && filteredItemList().length > 0) {
+          <div class="dropdown-list">
+            @for (name of filteredItemList() | slice:0:100; track name) {
+              <div class="dropdown-item" (mousedown)="selectCharacter(name)">
+                {{ name }}
+              </div>
+            }
+          </div>
+        }
+      </div>
+  
+      <!-- Result Popup -->
+      @if (guessResult(); as result) {
+        <div class="result-popup-backdrop" (click)="closePopup()">
+          <div class="result-popup-content" [class.correct]="result === 'correct'" [class.incorrect]="result === 'incorrect'" (click)="$event.stopPropagation()">
+            @if (result === 'correct') {
+              <h2>Correct! 🎉</h2>
+              <p>The character is <strong>{{ data.characterName }}</strong> from <strong>{{ data.baseTitle }}</strong>.</p>
+            } @else if (result === 'incorrect') {
+              <h2>Incorrect! 😢</h2>
+              <p>The correct character was <strong>{{ data.characterName }}</strong> from <strong>{{ data.baseTitle }}</strong>.</p>
+            }
+            <button class="popup-close-button" [class.correct]="result === 'correct'" [class.incorrect]="result === 'incorrect'" (click)="closePopup()">Close</button>
+          </div>
+        </div>
+      } 
+    </div>
+  } @else if (!isLoading() && !dailyData()) {
+    <!-- Error Message -->
+    <div class="error-container">
+      <h2>Oops! Something went wrong.</h2>
+      <p>We couldn't load the game data. Please try refreshing the page.</p>
+      <p>If the problem persists, it might be a temporary issue with our data source.</p>
+    </div>
+  }
+</div>

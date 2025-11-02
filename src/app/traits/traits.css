@@ -1,0 +1,222 @@
+.game-content-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 900px;
+}
+
+.character-image-container {
+    margin-bottom: 24px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.character-image-wrapper {
+    width: 300px;
+    height: 400px;
+    border-radius: 8px;
+    border: 2px solid var(--card-border);
+    overflow: hidden; /* This is key to contain the blur effect */
+    position: relative;
+}
+
+.character-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: filter 0.3s ease-in-out;
+}
+
+.character-image.blur {
+    filter: blur(16px);
+    -webkit-filter: blur(16px);
+}
+
+.character-image.blur:hover {
+    /* The wrapper will handle the click, so the cursor applies here */
+    cursor: pointer;
+}
+
+.static-traits-list {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 24px;
+    width: 100%;
+}
+
+.static-trait-item {
+    background-color: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 12px 20px;
+    font-size: 1rem;
+    color: var(--text-secondary);
+    text-align: center;
+}
+
+.static-trait-item strong {
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-right: 8px;
+}
+
+.trait-separator {
+    border: none;
+    border-top: 2px solid var(--card-border);
+    width: 100%;
+    max-width: 800px;
+    margin-top: 0;
+    margin-bottom: 24px;
+}
+
+.traits-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+    width: 100%;
+    max-width: 800px;
+}
+
+.trait-card {
+    background-color: var(--card-bg);
+    border-radius: 8px;
+    position: relative;
+    padding: 12px 20px;
+    text-align: center;
+    font-weight: 600;
+    color: var(--text-primary);
+    border: 1px solid var(--card-border);
+    font-size: 1rem;
+}
+
+.trait-card.blur .tag-text {
+    color: transparent;
+    text-shadow: 0 0 8px var(--text-primary);
+    user-select: none;
+}
+
+.trait-card.blur:hover {
+    cursor: pointer;
+}
+
+.trait-card.blur.locked:hover {
+    cursor: not-allowed;
+}
+
+.lock-emoji {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1.5rem;
+    z-index: 1;
+    opacity: 0.8;
+}
+
+.search-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex-grow: 1;
+}
+
+.dropdown-item {
+    padding: 10px 16px;
+    cursor: pointer;
+    color: var(--text-primary, #1f2937);
+    transition: background-color 0.15s;
+}
+
+.search-container {
+    position: relative;
+    width: 100%;
+    max-width: 700px;
+}
+
+.search-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex-grow: 1;
+}
+
+.dropdown-item {
+    padding: 10px 16px;
+    cursor: pointer;
+    color: var(--text-primary, #1f2937);
+    transition: background-color 0.15s;
+}
+
+.dropdown-item:hover {
+    background-color: var(--input-bg, #f3f4f6);
+}
+
+/* --- Guess Button States --- */
+.submit-button.incorrect-guess {
+  background-color: #dc2626; /* red-600 */
+}
+
+.submit-button.incorrect-guess:hover {
+  background-color: #b91c1c; /* red-700 */
+}
+
+.submit-button.correct-guess {
+  background-color: #22c55e; /* green-500 */
+}
+
+.submit-button.correct-guess:hover {
+  background-color: #16a34a; /* green-600 */
+}
+
+.source-hint-container {
+  width: 100%;
+  max-width: 800px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.hint-button {
+  background-color: var(--button-secondary-bg, #fff);
+  border: 2px solid var(--button-secondary-border, #374151);
+  color: var(--button-secondary-text, #374151);
+  font-weight: 700;
+  font-size: 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+  padding: 10px 20px;
+}
+
+.hint-button:hover {
+  background-color: var(--button-secondary-hover-bg, #374151);
+  color: var(--button-secondary-hover-text, #fff);
+}
+
+.source-title-box {
+  background-color: var(--input-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 12px 20px;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  text-align: center;
+}
