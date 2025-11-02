@@ -218,8 +218,8 @@ export class LeastPopularComponent implements OnInit {
         const sortedData = processedList.sort((a, b) => a.title.localeCompare(b.title));
         this.fullItemList = sortedData;
 
-        // Find the base manga in the processed list to get its proper display title
-        const baseMangaFromList = processedList.find(item => item.jp_title === dailyData.baseTitle || item.eng_title === dailyData.baseTitle);
+        const baseTitle = (dailyData as any).base_title;
+        const baseMangaFromList = processedList.find(item => item.jp_title === baseTitle || item.eng_title === baseTitle);
         const displayTitle = baseMangaFromList ? baseMangaFromList.title : dailyData.baseTitle;
 
         // 2. Process the daily character data

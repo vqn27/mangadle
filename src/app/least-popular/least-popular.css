@@ -264,6 +264,14 @@ app-search {
   background-color: #b91c1c; /* red-700 */
 }
 
+.submit-button.correct-guess {
+  background-color: #22c55e; /* green-500 */
+}
+
+.submit-button.correct-guess:hover {
+  background-color: #16a34a; /* green-600 */
+}
+
 .result-popup-content {
   background-color: var(--card-bg, white);
   padding: 24px 32px;
