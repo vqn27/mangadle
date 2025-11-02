@@ -57,6 +57,6 @@ export interface TraitsData {
   hairColor: string;
   gender: string;
   animeTitle: string;
-  imageUrl: string;
+  picture: string;
   tags: string[];
 }

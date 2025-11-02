@@ -13,13 +13,16 @@ export class MangaDataService {
   private http = inject(HttpClient);
   private platformId = inject(PLATFORM_ID);
 
+  private readonly SPREADSHEET_ID = '1Wrsei4H72bpPTVINrTfBsFCGNEFESDIBfz7VkDJcDgQ';
+  private readonly SHEET_API_KEY = "AIzaSyAoAs8FDaXIXftX8g9qSnbG8s8KFLFHAJI";
+
   private readonly DAILY_RECCS_URL = 'https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?action=dailyReccs';
   private readonly DAILY_LEAST_POPULAR_URL = 'https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?action=dailyLeastPopular';
   private readonly DAILY_TRAITS_URL = 'https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?action=dailyCharacterTraits';
   private readonly CHARACTER_NAMES_URL = '/character_names.csv';
 
   private readonly DATA_RANGE = `'Mangadle Data'!A2:N`;
-  private readonly FULL_LIST_URL = `https://sheets.googleapis.com/v4/spreadsheets/${environment.spreadsheetId}/values/${this.DATA_RANGE}?key=${environment.sheetApiKey}`;
+  private readonly FULL_LIST_URL = `https://sheets.googleapis.com/v4/spreadsheets/${this.SPREADSHEET_ID}/values/${this.DATA_RANGE}?key=${this.SHEET_API_KEY}`;
 
 
   // Google Apps Script URLs for game data (as they handle randomization)

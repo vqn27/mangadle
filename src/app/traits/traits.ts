@@ -248,7 +248,7 @@ export class TraitsComponent implements OnInit {
           characterName: rawData['names_(proper)'],
           hairColor: rawData.hair_color,
           gender: rawData.gender,
-          imageUrl: `https://placehold.co/200x300`,
+          picture: rawData.picture,
           animeTitle: animeTitleRaw,
           tags: parsedTags
         });
