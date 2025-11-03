@@ -243,13 +243,40 @@ export class TraitsComponent implements OnInit {
         const rawData = dailyData as any;
         
         // The manga title is in a stringified array, e.g., "['Joukamachi no Dandelion']"
-        const mangaTitleRaw = rawData.manga.replace(/[\[\]']/g, '').split(',')[0].trim();
-        const animeTitleRaw = rawData.anime.replace(/[\[\]']/g, '').split(',')[0].trim();
+        // We remove the surrounding [' and '] to get the full title, which may contain commas.
+        // To handle this safely, we convert it to a real array and take the first element.
+        const parseStringifiedArray = (str: string): string[] => { // This will be used for manga, anime, and tags
+          if (!str || str.length <= 2) return [];
+          
+          // Use a regex to find everything between the first pair of double quotes.
+          let match = str.match(/"(.*?)"/);
+          if (match && match[1]) {
+            return [match[1]];
+          }
+          
+          // If no double quotes, fall back to finding everything between the first pair of single quotes.
+          match = str.match(/'(.*?)'/);
+          return match && match[1] ? [match[1]] : [];
+        };
+        const mangaTitles = parseStringifiedArray(rawData.manga);
+        const animeTitles = parseStringifiedArray(rawData.anime);
+
+        // Safely get the first title, or an empty string if the array is empty.
+        const mangaTitleRaw = mangaTitles[0] || ''; // Use the first title found
+        const animeTitleRaw = animeTitles[0] || '';
 
         const displayTitle = mangaTitleRaw;
 
         // The traits are in a stringified array, e.g., "['Tag1', 'Tag2']"
-        const parsedTags = rawData.tags.replace(/[\[\]']/g, '').split(',').map((t: string) => t.trim());
+        const parseTagsArray = (str: string): string[] => {
+          if (!str || str.length <= 2) return [];
+          // This regex finds all strings enclosed in single quotes.
+          const matches = str.match(/'([^']*)'/g);
+          if (!matches) return [];
+          // For each match, remove the surrounding quotes to get the clean tag.
+          return matches.map(match => match.substring(1, match.length - 1));
+        };
+        const parsedTags = parseTagsArray(rawData.tags);
 
         this.dailyData.set({
           baseTitle: displayTitle,

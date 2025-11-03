@@ -24,6 +24,11 @@
             [class.blur]="!isImageUnblurred()"
             draggable="false"
             (contextmenu)="$event.preventDefault()" />
+          @if (!isImageUnblurred()) {
+            <div class="unblur-overlay">
+              <span class="unblur-text">Click to unblur</span>
+            </div>
+          }
         </div>
       </div>
 
