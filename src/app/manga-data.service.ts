@@ -21,7 +21,7 @@ private readonly SPREADSHEET_ID = '1Wrsei4H72bpPTVINrTfBsFCGNEFESDIBfz7VkDJcDgQ'
   private readonly DAILY_RECCS_URL = 'https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?action=dailyReccs';
   private readonly DAILY_LEAST_POPULAR_URL = 'https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?action=dailyLeastPopular';
   private readonly DAILY_TRAITS_URL = 'https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?action=dailyCharacterTraits';
-  private readonly CHARACTER_NAMES_URL = '/character_names.csv';
+  private readonly CHARACTER_NAMES_URL = '/mangadle/character_names.csv';
 
 
   // Google Apps Script URLs for game data (as they handle randomization)

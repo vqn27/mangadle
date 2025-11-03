@@ -82,11 +82,20 @@ export class TraitsComponent implements OnInit {
     // Effect to save unblurred tags to localStorage.
     effect(() => {
       const dailyData = this.dailyData();
-      const states = this.unblurredTags(); // Read the signal to create a dependency
-      // Check if unblurredTags is not empty before saving
-      if (dailyData && Object.keys(states).length > 0 && isPlatformBrowser(this.platformId)) {
+      // Read signals to create a dependency
+      const tags = this.unblurredTags();
+      const imageUnblurred = this.isImageUnblurred();
+      const sourceRevealed = this.isSourceHintRevealed();
+
+      const hintsToCache = {
+        unblurredTags: tags,
+        isImageUnblurred: imageUnblurred,
+        isSourceHintRevealed: sourceRevealed,
+      };
+
+      if (dailyData && (Object.keys(tags).length > 0 || imageUnblurred || sourceRevealed) && isPlatformBrowser(this.platformId)) {
         const hintKey = this.getHintCacheKey(dailyData.baseTitle);
-        localStorage.setItem(hintKey, JSON.stringify(states));
+        localStorage.setItem(hintKey, JSON.stringify(hintsToCache));
       }
     });
 
@@ -275,8 +284,17 @@ export class TraitsComponent implements OnInit {
           // Load cached unblurred tag states
           const hintKey = this.getHintCacheKey(displayTitle);
           const cachedUnblurredStates = localStorage.getItem(hintKey);
-          if (cachedUnblurredStates) {
-            this.unblurredTags.set(JSON.parse(cachedUnblurredStates));
+          if (cachedUnblurredStates) { 
+            const hints = JSON.parse(cachedUnblurredStates);
+            if (hints.unblurredTags) {
+              this.unblurredTags.set(hints.unblurredTags);
+            }
+            if (hints.isImageUnblurred) {
+              this.isImageUnblurred.set(hints.isImageUnblurred);
+            }
+            if (hints.isSourceHintRevealed) {
+              this.isSourceHintRevealed.set(hints.isSourceHintRevealed);
+            }
           }
         }
 
