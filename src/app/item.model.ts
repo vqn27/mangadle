@@ -28,6 +28,7 @@ export interface HistoryEntry {
 export interface RecommendationsData extends baseRandomRec {
   base_title: string;
   base_image_url: string;
+  date: string;
 }
 
 export interface baseRandomRec {

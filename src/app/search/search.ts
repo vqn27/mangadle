@@ -149,29 +149,41 @@ export class Search implements OnInit {
       history: this.mangaDataService.getGameHistory()
     }).subscribe({
       next: ({ mangaList, gameData, history }) => {
-        // 1. Process the manga list to create a consistent display title.
-        const processedList = mangaList.map((item: Item) => ({
-          ...item,
-          title: (item.eng_title && item.eng_title !== 'N/A') ? item.eng_title : item.jp_title
-        }));
+        // 1. Set the full item list. The service now provides it pre-processed and sorted.
+        this.fullItemList = mangaList;
 
-        // 2. Set the full item list, sorted alphabetically by the display title.
-        this.fullItemList = processedList.sort((a: Item, b: Item) => a.title.localeCompare(b.title));
-
-        // 3. Find the full details for the daily manga from the main list.
+        // 2. Find the full details for the daily manga from the main list.
         const dailyMangaDetails = this.fullItemList.find(item => item.jp_title === gameData.title);
         if (!dailyMangaDetails) {
-          console.error(`Could not find details for manga with title: ${gameData.title}`);
           this.isLoading.set(false);
           return; // Stop processing if the daily manga can't be found
         }
 
         this.randomDailyManga.set(dailyMangaDetails);
-        this.gameDateText.set(gameData.date);
-        this.gameHistory = history;
-        // Find the index of the current game in the chronological history
-        this.currentDateIndex = this.gameHistory.findIndex(entry => entry.date === gameData.date);
 
+        // The daily endpoint returns YYYY-MM-DD, but the history sheet uses MM/DD/YYYY.
+        // Convert today's date to match the history format if it's not a historic game.
+        let displayDate = gameData.date;
+        if (!this.isHistoricGame()) {
+          const [year, month, day] = gameData.date.split('-');
+          displayDate = `${parseInt(month, 10)}/${parseInt(day, 10)}/${year}`;
+        }
+        this.gameDateText.set(displayDate);
+
+        // If we are on the current day's game, we need to ensure it's part of the history
+        // list for correct pagination.
+        let localHistory = [...history]; // Create a mutable copy to avoid modifying the cached service data.
+        if (!this.isHistoricGame() && !localHistory.some(entry => entry.date === displayDate)) {
+          localHistory.push({
+            date: displayDate,
+            title: dailyMangaDetails.title,
+            jp_title: dailyMangaDetails.jp_title
+          } as HistoryEntry);
+        }
+        // Ensure the history is sorted chronologically before finding the index.
+        this.gameHistory = localHistory.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+        this.currentDateIndex = this.gameHistory.findIndex(entry => entry.date === displayDate);
         this.randomDailyMangaChapter = gameData.chapter;
 
         // Check if the game for today has already been won.
@@ -209,10 +221,8 @@ export class Search implements OnInit {
             }
           }
         }
-
-        console.log('Daily manga for today:', this.randomDailyManga());
         
-        // 4. Fetch the images for the daily manga.
+        // 3. Fetch the images for the daily manga.
         this.fetchMangaImagesDaily([gameData.img1, gameData.img2, gameData.img3]);
         // Turn off main loading indicator after initial data is fetched.
         // The image loader will have its own indicator.
