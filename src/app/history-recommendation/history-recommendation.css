@@ -1,0 +1,58 @@
+.history-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 16px;
+    width: 100%;
+    max-width: 1000px;
+    margin-bottom: 24px;
+}
+
+.history-button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border: 1px solid var(--button-secondary-border, #d1d5db);
+    background-color: var(--input-bg, #f3f4f6);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.2s, box-shadow 0.2s;
+    font-family: inherit;
+    padding: 16px;
+    text-align: center;
+}
+
+.history-button:hover:not(.guessed) {
+    background-color: #e5e7eb;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.history-button.guessed {
+    background-color: #6d28d9; /* purple-700 */
+    color: white;
+    border-color: #5b21b6;
+}
+
+.history-button.guessed .history-button-date {
+    color: #ddd;
+}
+
+.history-button-day {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--text-primary, #1f2937);
+    margin-bottom: 8px;
+}
+
+.history-button-date {
+    font-size: 0.9rem;
+    color: var(--text-secondary, #6b7280);
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 16px;
+}

@@ -13,25 +13,31 @@ interface ImageCacheDB extends DBSchema {
   providedIn: 'root'
 })
 export class DbService {
-  private dbPromise: Promise<IDBPDatabase<ImageCacheDB>>;
+  // Make the promise static to ensure it's shared across all instances of the service.
+  private static dbPromise: Promise<IDBPDatabase<ImageCacheDB>>;
 
   constructor() {
-    this.dbPromise = openDB<ImageCacheDB>('mangadle-db', 1, {
-      upgrade(db) {
-        db.createObjectStore('image-cache');
-      },
-    });
+    // Only initialize the database connection if it hasn't been already.
+    if (!DbService.dbPromise) {
+      DbService.dbPromise = openDB<ImageCacheDB>('mangadle-db', 3, {
+        upgrade(db) {
+          if (!db.objectStoreNames.contains('image-cache')) {
+            db.createObjectStore('image-cache');
+          }
+        },
+      });
+    }
   }
 
   async getImage(key: string): Promise<Blob | undefined> {
-    return (await this.dbPromise).get('image-cache', key);
+    return (await DbService.dbPromise).get('image-cache', key);
   }
 
   async setImage(key: string, value: Blob): Promise<string> {
-    return (await this.dbPromise).put('image-cache', value, key);
+    return (await DbService.dbPromise).put('image-cache', value, key);
   }
 
   async clearAllImages(): Promise<void> {
-    return (await this.dbPromise).clear('image-cache');
+    return (await DbService.dbPromise).clear('image-cache');
   }
 }
