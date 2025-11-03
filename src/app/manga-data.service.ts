@@ -203,7 +203,7 @@ export class MangaDataService {
           const reccsData: RecommendationsData = {
             date: this.formatDateFromSheet(gameRow[0]),
             base_title: gameRow[1],
-            base_image_url: gameRow[2],
+            base_image_url: gameRow[3],
             base_genres: gameRow[4],
             base_themes: gameRow[6]
           } as any;
