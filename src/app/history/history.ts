@@ -2,6 +2,7 @@ import { Component, inject, OnInit, signal, computed, PLATFORM_ID } from '@angul
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { HistoryEntry } from '../item.model';
+import { forkJoin } from 'rxjs';
 import { MangaDataService } from '../manga-data.service';
 
 @Component({
@@ -36,9 +37,30 @@ export class HistoryComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    this.mangaDataService.getGameHistory().subscribe({
-      next: (data) => {
-        this.history.set(data);
+    forkJoin({
+      history: this.mangaDataService.getGameHistory(),
+      today: this.mangaDataService.getMangaPanelGame()
+    }).subscribe({
+      next: ({ history, today }) => { 
+        // The daily endpoint returns YYYY-MM-DD, but the history sheet uses MM/DD/YYYY.
+        // Convert today's date to match the history format.
+        const [year, month, day] = today.date.split('-');
+        const formattedDate = `${parseInt(month, 10)}/${parseInt(day, 10)}/${year}`;
+        const todayEntry: HistoryEntry = {
+          date: formattedDate,
+          title: today.title,
+          jp_title: today.title, // Assuming jp_title is the same for daily game
+          image: today.img1,
+          score: 0, // Not available from daily endpoint
+          popularity: 0, // Not available from daily endpoint
+          gameMode: 'Manga Panel'
+        };
+
+        // Add today's game to the history if it's not already there
+        if (!history.some(entry => entry.date === todayEntry.date)) {
+          history.push(todayEntry);
+        }
+        this.history.set(history);
         this.isLoading.set(false);
       },
       error: (err) => {

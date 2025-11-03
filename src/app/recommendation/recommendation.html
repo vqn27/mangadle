@@ -1,32 +1,39 @@
 <div class="content-wrapper">
 
   <!-- Result Popup -->
-  <div *ngIf="guessResult() === 'correct'" class="result-popup-backdrop" (click)="closePopup()">
-    <div class="result-popup-content correct" (click)="$event.stopPropagation()">
-      <h2>Congratulations! 🎉</h2>
-      <p>You guessed the correct manga!</p>
-      <p>The answer was: <strong>{{ randomManga()?.title }}</strong></p>
-      <button class="popup-close-button correct" (click)="closePopup()">Play Again Tomorrow</button>
+  @if (guessResult(); as result) {
+    <div class="result-popup-backdrop" (click)="closePopup()">
+      <div class="result-popup-content" [class.correct]="result === 'correct'" [class.incorrect]="result === 'incorrect'" (click)="$event.stopPropagation()">
+        @if (result === 'correct') {
+          <h2>Congratulations! 🎉</h2>
+          <p>You guessed the correct manga!</p>
+          <p>The answer was: <strong>{{ randomManga()?.title }}</strong></p>
+          <button class="popup-close-button correct" (click)="closePopup()">Play Again Tomorrow</button>
+        } @else {
+          <h2>Incorrect! 🤔</h2>
+          <p>The correct manga is <strong>{{ randomManga()?.title }}</strong>!</p>
+          <button class="popup-close-button incorrect" (click)="closePopup()">Try Again Tomorrow</button>
+        }
+      </div>
     </div>
-  </div>
-
-  <!-- Incorrect Guess Popup -->
-  <div *ngIf="guessResult() === 'incorrect'" class="result-popup-backdrop" (click)="closePopup()">
-    <div class="result-popup-content incorrect" (click)="$event.stopPropagation()">
-      <h2>Incorrect! 🤔</h2>
-      <p>The correct manga is <strong>{{ randomManga()?.title }}</strong>!</p>
-      <button class="popup-close-button incorrect" (click)="closePopup()">Try Again Tomorrow</button>
-    </div>
-  </div>
+  }
 
   <h1 class="title">Guess by the Manga Recommendations</h1>
 
-  <div *ngIf="isLoading()" class="loading-container">
-    <p>Loading recommendations...</p>
+  <div class="date-navigator">
+    <button class="nav-arrow" (click)="navigateToDay(-1)" [disabled]="isFirstDay()">&#9664;</button>
+    <button class="game-date-text" (click)="navigateToHistory()">{{ gameDateText() }}</button>
+    <button class="nav-arrow" (click)="navigateToDay(1)" [disabled]="isLastDay()">&#9654;</button>
   </div>
 
-  <ng-container *ngIf="!isLoading()">
-    <div *ngIf="isBlurredHintVisible()" class="blurred-hint-container" (contextmenu)="$event.preventDefault()">
+
+  @if (isLoading()) {
+    <div class="loading-container">
+      <p>Loading recommendations...</p>
+    </div>
+  } @else {
+    @if (isBlurredHintVisible()) {
+      <div class="blurred-hint-container" (contextmenu)="$event.preventDefault()">
       <img 
         [src]="randomManga()?.imageUrl" 
         [alt]="randomManga()?.title" 
@@ -34,9 +41,12 @@
         [class.unblurred]="isGameWon() || isGameLost()" draggable="false">
     </div>
 
-    <div *ngIf="areImagesLoading()" class="image-loading-overlay">
-      <p>Loading recommendations...</p>
-    </div>
+    }
+    @if (areImagesLoading()) {
+      <div class="image-loading-overlay">
+        <p>Loading recommendations...</p>
+      </div>
+    }
     <div class="recommendation-panels-container">
       @for (rec of recommendations(); track rec.title) {
         <div class="recommendation-item">
@@ -53,25 +63,31 @@
         </div>
       }
     </div>
-  
-    <div *ngIf="isGameWon() || isGameLost()"
-         class="answer-container"
-         [class.correct-answer]="isGameWon()"
-         [class.incorrect-answer]="isGameLost()">
-      <span *ngIf="isGameWon()">Recommendations based on: <strong>{{ randomManga()?.title }}</strong></span>
-      <span *ngIf="isGameLost()">The correct answer was: <strong>{{ randomManga()?.title }}</strong></span>
-    </div>
-
-    <div *ngIf="isGenreHintVisible()" class="genre-theme-hint-container">
-      <p><strong>Genres:</strong> {{ randomManga()?.base_genres }}</p>
-      <p><strong>Themes:</strong> {{ randomManga()?.base_themes }}</p>
-    </div>
+    
+    @if (isGameWon() || isGameLost()) {
+      <div class="answer-container"
+           [class.correct-answer]="isGameWon()"
+           [class.incorrect-answer]="isGameLost()">
+        @if (isGameWon()) {
+          <span>Recommendations based on: <strong>{{ randomManga()?.title }}</strong></span>
+        } @else {
+          <span>The correct answer was: <strong>{{ randomManga()?.title }}</strong></span>
+        }
+      </div>
+    }
+    @if (isGenreHintVisible()) {
+      <div class="genre-theme-hint-container">
+        <p><strong>Genres:</strong> {{ randomManga()?.base_genres }}</p>
+        <p><strong>Themes:</strong> {{ randomManga()?.base_themes }}</p>
+      </div>
+    }
 
     <div class="hint-buttons-container">
-      <button *ngIf="!isGenreHintVisible()" class="recommendation-hint-button" (click)="showGenreHint()">Genres & Themes</button>
-      <button *ngIf="!isBlurredHintVisible()" class="recommendation-hint-button" (click)="showBlurredHint()" [disabled]="!isGenreHintVisible()">
-        <span *ngIf="!isGenreHintVisible()">🔒 </span>Blurred Cover
+      @if (!isGenreHintVisible()) { <button class="recommendation-hint-button" (click)="showGenreHint()">Genres & Themes</button> }
+      @if (!isBlurredHintVisible()) { <button class="recommendation-hint-button" (click)="showBlurredHint()" [disabled]="!isGenreHintVisible()">
+        @if (!isGenreHintVisible()) { <span>🔒 </span> }Blurred Cover
       </button>
+      }
     </div>
 
     <!-- The main searchable dropdown component -->
@@ -90,7 +106,9 @@
                 [disabled]="isGameWon() || isGameLost()"
                 class="search-input"
               >
-              <button *ngIf="searchTerm() && !isGameWon() && !isGameLost()" (click)="clearSearch()" class="clear-button" type="button">&times;</button>
+              @if (searchTerm() && !isGameWon() && !isGameLost()) {
+                <button (click)="clearSearch()" class="clear-button" type="button">&times;</button>
+              }
             </div>
             <button class="submit-button" (click)="checkGuess()" [disabled]="isSubmitting() || isGameWon() || isGameLost()" [class.correct-guess]="isGameWon()" [class.incorrect-guess]="isGameLost()">
               Guess
@@ -98,22 +116,22 @@
           </div>
       
           <!-- 2. Dropdown List (Custom Options Overlay) -->
-          <div *ngIf="isDropdownOpen()" class="dropdown-list">
-            <!-- No Results Message -->
-            <div *ngIf="filteredItemList().length === 0" class="no-results-option">
-              No results found for "{{ searchTerm() }}"
+          @if (isDropdownOpen()) {
+            <div class="dropdown-list">
+              @if (filteredItemList().length === 0) {
+                <div class="no-results-option">No results found for "{{ searchTerm() }}"</div>
+              } @else {
+                @for (item of filteredItemList(); track item.title) {
+                  <div class="dropdown-option" (mousedown)="selectItem(item)" [class.selected]="item.title === selectedItem()?.title">
+                    <div class="option-details">
+                      <span class="option-name">{{ item.title }}</span>
+                    </div>
+                  </div>
+                }
+              }
             </div>
-      
-            <!-- Options Loop -->
-            @for (item of filteredItemList(); track item.title) {
-              <div class="dropdown-option" (mousedown)="selectItem(item)" [class.selected]="item.title === selectedItem()?.title">
-                <div class="option-details">
-                  <span class="option-name">{{ item.title }}</span>
-                </div>
-              </div>
-            }
-          </div>
+          }
         </div>
     </div>
-  </ng-container>
+  }
 </div>

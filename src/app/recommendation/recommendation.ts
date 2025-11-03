@@ -1,12 +1,14 @@
-import { Component, signal, computed, inject, OnInit, effect, PLATFORM_ID, Renderer2 } from '@angular/core';
+import { Component, signal, computed, inject, OnInit, OnDestroy, effect, PLATFORM_ID, Renderer2 } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { forkJoin, of, Observable } from 'rxjs';
+import { forkJoin, of, Observable, Subject } from 'rxjs';
 import { tap } from 'rxjs/operators';
+import { ActivatedRoute, Router } from '@angular/router';
 import { DomSanitizer } from '@angular/platform-browser';
-import { Item, Recommendations, baseRandomRec, RecommendationsData } from '../item.model';
+import { Item, Recommendations, baseRandomRec, RecommendationsData, HistoryEntry } from '../item.model';
 import { MangaDataService } from '../manga-data.service';
+import { DbService } from '../db.service';
 
 
 @Component({
@@ -19,12 +21,18 @@ import { MangaDataService } from '../manga-data.service';
   templateUrl: './recommendation.html',
   styleUrls: ['./recommendation.css', '../shared-styles.css']
 })
-export class Recommendation implements OnInit {
+export class Recommendation implements OnInit, OnDestroy {
   private http = inject(HttpClient);
   private platformId = inject(PLATFORM_ID);
   private sanitizer = inject(DomSanitizer);
   private mangaDataService = inject(MangaDataService);
   private renderer = inject(Renderer2);
+  private dbService = inject(DbService);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+
+  // Subject to automatically unsubscribe from observables on component destruction
+  private destroy$ = new Subject<void>();
 
   // === UI State ===
   searchTerm = signal('');
@@ -39,6 +47,11 @@ export class Recommendation implements OnInit {
   isSubmitting = signal(false);
   isGameWon = signal(false);
   isGameLost = signal(false);
+  isHistoricGame = signal(false);
+  gameDateText = signal('');
+
+  private gameHistory: HistoryEntry[] = [];
+  private currentDateIndex = -1;
 
   // === Data State ===
   fullItemList: Item[] = []; // Start with an empty list
@@ -53,6 +66,21 @@ export class Recommendation implements OnInit {
 
   // The manga that the recommendations are based on
   randomManga = signal<baseRandomRec | undefined>(undefined);
+
+  /**
+   * Computed signals to determine if navigation arrows should be disabled.
+   */
+  isFirstDay = computed(() => this.currentDateIndex === 0);
+  isLastDay = computed(() => {
+    // The "last" playable day is the one before the final entry in our history list.
+    // The final entry is reserved for the *next* day's game.
+    // Since getRecommendationHistory() already removes the "next day" entry, the last item is the current day.
+    return this.currentDateIndex >= this.gameHistory.length - 1;
+  });
+
+  isHistoric(): boolean {
+    return this.isHistoricGame();
+  }
 
   /**
    * Computed signal to filter the list in real-time based on the searchTerm.
@@ -114,14 +142,45 @@ export class Recommendation implements OnInit {
   }
 
   ngOnInit() {
-    this.fetchMangaData();
+    const gameDate = this.route.snapshot.paramMap.get('date');
+    if (gameDate) {
+      this.isHistoricGame.set(true);
+    }
+    this.fetchMangaData(gameDate);
+  }
+
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  navigateToDay(offset: number): void {
+    if (this.isLoading() || this.gameHistory.length === 0) return;
+
+    const newIndex = this.currentDateIndex + offset;
+    if (newIndex >= 0 && newIndex < this.gameHistory.length) {
+      const newDate = this.gameHistory[newIndex].date;
+      this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
+        this.router.navigate(['/recommendation', newDate]);
+      });
+    }
+  }
+
+  /**
+   * Navigates to the game history page.
+   */
+  navigateToHistory(): void {
+    this.router.navigate(['/history-recommendation']);
   }
 
   /**
    * Selects an item, updates the input field, and closes the dropdown.
    * @param item The Item object to select.
    */
-  selectItem(item: Item): void {
+  selectItem(item: Item): void { 
+    if (this.isGameWon() || this.isGameLost()) {
+      return;
+    }
     this.selectedItem.set(item);
     this.searchTerm.set(item.title); // Set the input value to the selected name
     this.isDropdownOpen.set(false); // Close the dropdown
@@ -147,7 +206,7 @@ export class Recommendation implements OnInit {
    * Shows the blurred image hint.
    */
   showBlurredHint(): void {
-    this.isBlurredHintVisible.set(true);
+    this.isBlurredHintVisible.set(true); 
   }
 
   /**
@@ -167,12 +226,13 @@ export class Recommendation implements OnInit {
   /**
    * Fetches data from the Google Apps Script URL.
    */
-  private fetchMangaData(): void {
+  private fetchMangaData(gameDate: string | null): void {
     forkJoin({
       fullList: this.mangaDataService.getFullMangaList(),
-      dailyReccs: this.mangaDataService.getRecommendationsGame()
+      dailyReccs: this.mangaDataService.getRecommendationsGame(gameDate),
+      history: this.mangaDataService.getRecommendationHistory()
     }).subscribe({
-      next: ({ fullList, dailyReccs }) => {
+      next: ({ fullList, dailyReccs, history }) => {
         // Create a dictionary mapping jp_title to eng_title from the full list
         this.titleMap = fullList.reduce((acc, item) => {
           if (item.jp_title && item.eng_title && item.eng_title !== 'N/A' && item.eng_title) {
@@ -181,18 +241,58 @@ export class Recommendation implements OnInit {
           return acc;
         }, {} as { [jp_title: string]: string });
 
-        // Process the manga list to use a single, consistent title property.
-        const processedList = fullList.map(item => ({
-          ...item,
-          title: (item.eng_title && item.eng_title !== 'N/A' && item.eng_title) ? item.eng_title : item.jp_title
-        }));
-
         // Set the full item list, sorted alphabetically by the display title.
-        this.fullItemList = processedList.sort((a, b) => a.title.localeCompare(b.title));
+        this.fullItemList = fullList.sort((a, b) => a.title.localeCompare(b.title));
 
         // Find the base manga in the processed list to get its proper display title
-        const baseMangaFromList = processedList.find(item => item.jp_title === dailyReccs.base_title || item.eng_title === dailyReccs.base_title);
+        const baseMangaFromList = this.fullItemList.find(item => item.jp_title === dailyReccs.base_title || item.eng_title === dailyReccs.base_title);
         const displayTitle = baseMangaFromList ? baseMangaFromList.title : dailyReccs.base_title;
+
+        // Determine if the game is TRULY the current day's game, or a historical one.
+        // This is the key to fixing the navigation logic.
+        const today = new Date();
+        const todayFormatted = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
+
+        let displayDate: string;
+        if (this.isHistoricGame()) {
+          displayDate = gameDate!; // Use the date from the URL directly for historic games
+        } else {
+          // For the current game, format the date from YYYY-MM-DD to MM/DD/YYYY
+          const [year, month, day] = dailyReccs.date.split('-');
+          displayDate = `${parseInt(month, 10)}/${parseInt(day, 10)}/${year}`;
+
+          // If the formatted date is not today's date, it must be a historical game
+          // that was navigated to without a date in the URL.
+          if (displayDate !== todayFormatted) this.isHistoricGame.set(true);
+        }
+        this.gameDateText.set(displayDate);
+
+        // Resolve display titles for the fetched history
+        let localHistory = history.map(entry => {
+          const mangaFromList = this.fullItemList.find(item => item.jp_title === entry.jp_title);
+          return {
+            ...entry,
+            title: mangaFromList?.title || entry.jp_title
+          };
+        });
+        
+        // If we are on the current day's game, ensure it's part of the history list for correct navigation.
+        if (!this.isHistoricGame() && !localHistory.some(entry => entry.date === displayDate)) {
+          localHistory.push({
+            date: displayDate,
+            title: displayTitle,
+            jp_title: dailyReccs.base_title,
+            gameMode: 'Recommendation'
+          } as HistoryEntry); // The type assertion is needed because we don't have all properties
+        }
+
+        // 1. Sort the history chronologically.
+        const sortedHistory = localHistory.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        // 2. Find the index of the current game within the *now complete and sorted* list.
+        this.currentDateIndex = sortedHistory.findIndex(entry => entry.date === displayDate);
+        // 3. Assign the final, sorted list to the class property.
+        this.gameHistory = sortedHistory;
+
 
         // 1. Assign the base_title to the randomManga signal
         this.randomManga.set({
@@ -239,50 +339,56 @@ export class Recommendation implements OnInit {
           }
         }
 
-        let recommendationsToSet: Recommendations[] = [];
-
-        // Check for cached recommendations for the current base title
-        if (isPlatformBrowser(this.platformId)) {
-          const cacheKey = `reccs-${dailyReccs.base_title}`;
-          const cachedReccs = localStorage.getItem(cacheKey);
-          if (cachedReccs) {
-            recommendationsToSet = JSON.parse(cachedReccs);
-            console.log(`Successfully loaded CACHED recommendations based on: ${this.randomManga()}`);
-          }
-        }
-
-        // If no cached recommendations, create them from the fetched data
-        if (recommendationsToSet.length === 0) {
-          for (let i = 1; i <= 12; i++) { // Assuming up to 12 recommendations
-            const jp_title = (dailyReccs as any)[`rec_title_${i}`];
-            const imageUrl = (dailyReccs as any)[`rec_image_url_${i}`];
-            const synopsis = (dailyReccs as any)[`rec_synopsis_${i}`];
-
-            // Use the title map to find the English title, otherwise use the Japanese title
-            const title = (jp_title && this.titleMap[jp_title]) ? this.titleMap[jp_title] : jp_title;
-            
-            if (title && imageUrl && synopsis) {
-              recommendationsToSet.push({ title, imageUrl, synopsis }); 
-            }
-          }
-
-          // Save the newly created recommendations to the cache
-          if (isPlatformBrowser(this.platformId)) {
-            const cacheKey = `reccs-${dailyReccs.base_title}`;
-            localStorage.setItem(cacheKey, JSON.stringify(recommendationsToSet));
-          }
-          console.log(`Successfully fetched and cached new recommendations based on: ${this.randomManga()?.title}`);
-        }
-
-        // Set the recommendations and fetch their images
-        this.recommendations.set(recommendationsToSet);
-        this.fetchRecommendationImages();
+        // The `dailyReccs` object now contains the full data for both daily and historical games.
+        this.processAndSetRecommendations(dailyReccs);
       },
       error: (err) => {
         console.error('Failed to fetch data from Google Apps Script. This could be a CORS issue if the script is not configured for public JSON access.', err);
         this.isLoading.set(false);
       }
     }).add(() => this.isLoading.set(false));
+  }
+
+  private processAndSetRecommendations(reccsData: RecommendationsData): void {
+    let recommendationsToSet: Recommendations[] = [];
+    const baseTitle = reccsData.base_title;
+
+    // Check for cached recommendations for the current base title
+    if (isPlatformBrowser(this.platformId)) {
+      const cacheKey = `reccs-${baseTitle}`;
+      const cachedReccs = localStorage.getItem(cacheKey);
+      if (cachedReccs) {
+        recommendationsToSet = JSON.parse(cachedReccs);
+        console.log(`Successfully loaded CACHED recommendations for: ${baseTitle}`);
+      }
+    }
+
+    // If no cached recommendations, create them from the fetched data
+    if (recommendationsToSet.length === 0) {
+      for (let i = 1; i <= 12; i++) { // Assuming up to 12 recommendations
+        const jp_title = (reccsData as any)[`rec_title_${i}`];
+        const imageUrl = (reccsData as any)[`rec_image_url_${i}`];
+        const synopsis = (reccsData as any)[`rec_synopsis_${i}`];
+
+        // Use the title map to find the English title, otherwise use the Japanese title
+        const title = (jp_title && this.titleMap[jp_title]) ? this.titleMap[jp_title] : jp_title;
+        
+        if (title && imageUrl && synopsis) {
+          recommendationsToSet.push({ title, imageUrl, synopsis }); 
+        }
+      }
+
+      // Save the newly created recommendations to the cache
+      if (isPlatformBrowser(this.platformId)) {
+        const cacheKey = `reccs-${baseTitle}`;
+        localStorage.setItem(cacheKey, JSON.stringify(recommendationsToSet));
+      }
+      console.log(`Successfully fetched and cached new recommendations for: ${baseTitle}`);
+    }
+
+    // Set the recommendations and fetch their images
+    this.recommendations.set(recommendationsToSet);
+    this.fetchRecommendationImages();
   }
 
   /**
@@ -354,33 +460,43 @@ export class Recommendation implements OnInit {
       data: string; // Base64 encoded image data
       mimetype: string;
       url: string;
+      blob?: Blob;
     }
     this.areImagesLoading.set(true);
 
     const imageObservables: Observable<ImageResponse>[] = this.recommendations().map(rec => {
-      const imageUrl = rec.imageUrl;
-      if (isPlatformBrowser(this.platformId)) {
-        const cachedImage = localStorage.getItem(imageUrl);
-        if (cachedImage) {
-          return of(JSON.parse(cachedImage));
-        }
-      }
-      const url = `https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?url=${encodeURIComponent(imageUrl)}`;
-      return this.http.get<ImageResponse>(url);
+      // This observable will first try to get the image from IndexedDB,
+      // and if it's not there, it will fetch it from the network.
+      return new Observable(subscriber => {
+        this.dbService.getImage(rec.imageUrl).then(cachedBlob => {
+          if (cachedBlob) {
+            // If we have a cached blob, we're done.
+            subscriber.next({ data: '', mimetype: cachedBlob.type, url: rec.imageUrl, blob: cachedBlob });
+            subscriber.complete();
+          } else {
+            // If not in cache, fetch from the network proxy.
+            const networkUrl = `https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?url=${encodeURIComponent(rec.imageUrl)}`;
+            this.http.get<ImageResponse>(networkUrl).subscribe({
+              next: res => {
+                const imageBlob = this.b64toBlob(res.data, res.mimetype);
+                // Store the new blob in IndexedDB for next time.
+                this.dbService.setImage(rec.imageUrl, imageBlob);
+                subscriber.next({ ...res, blob: imageBlob });
+                subscriber.complete();
+              },
+              error: err => subscriber.error(err)
+            });
+          }
+        });
+      });
     });
 
     forkJoin(imageObservables).subscribe({
       next: (responses) => {
         const updatedRecs = this.recommendations().map((rec, index) => {
           const res = responses[index];
-          // Save to cache if it wasn't there before
-          if (isPlatformBrowser(this.platformId)) {
-            if (!localStorage.getItem(rec.imageUrl)) {
-              localStorage.setItem(rec.imageUrl, JSON.stringify(res));
-            }
-          }
-          const imageBlob = this.b64toBlob(res.data, res.mimetype);
-          const objectUrl = URL.createObjectURL(imageBlob);
+          // Create a temporary URL for the blob to display in the <img> tag.
+          const objectUrl = URL.createObjectURL(res.blob!);
           return { ...rec, imageUrl: this.sanitizer.bypassSecurityTrustUrl(objectUrl) as string };
         });
         this.recommendations.set(updatedRecs as Recommendations[]);
