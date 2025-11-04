@@ -21,6 +21,12 @@
 
   <h1 class="title">Guess by the Least Popular Characters</h1>
 
+  <div class="date-navigator">
+    <button class="nav-arrow" (click)="navigateToDay(-1)" [disabled]="isFirstDay()">&#9664;</button>
+    <button class="game-date-text" (click)="navigateToHistory()">{{ gameDateText() }}</button>
+    <button class="nav-arrow" (click)="navigateToDay(1)" [disabled]="isLastDay()">&#9654;</button>
+  </div>
+
   <div *ngIf="isLoading()" class="loading-container">
     <p>Loading least popular characters...</p>
   </div>

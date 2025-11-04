@@ -26,7 +26,9 @@ import { filter } from 'rxjs/operators';
           <span class="sidebar-link-icon">👍</span>
           <span class="sidebar-link-text">Guess by Recommendations</span>
         </a>
-        <a routerLink="/least-popular" class="sidebar-link" routerLinkActive="active">
+        <a routerLink="/least-popular" 
+           class="sidebar-link" 
+           [class.active]="isLeastPopularRouteActive()">
           <span class="sidebar-link-icon">📉</span>
           <span class="sidebar-link-text">Guess by Least Popular Characters</span>
         </a>
@@ -229,6 +231,7 @@ export class App {
   isDarkMode = signal<boolean>(this.getInitialDarkMode());
   isMangaPanelRouteActive = signal(false);
   isRecommendationRouteActive = signal(false);
+  isLeastPopularRouteActive = signal(false);
 
   constructor() {
     // Effect to check the current route and highlight the correct sidebar link.
@@ -244,6 +247,10 @@ export class App {
       // "Recommendations" is active for its main, historical, and history pages.
       const isRecommendationActive = url.startsWith('/recommendation') || url === '/history-recommendation';
       this.isRecommendationRouteActive.set(isRecommendationActive);
+
+      // "Least Popular" is active for its main, historical, and history pages.
+      const isLeastPopularActive = url.startsWith('/least-popular') || url === '/history-least-popular';
+      this.isLeastPopularRouteActive.set(isLeastPopularActive);
     });
 
     // This effect will run whenever `isDarkMode` changes, saving the preference.

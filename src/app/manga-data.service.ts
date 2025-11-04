@@ -16,8 +16,11 @@ export class MangaDataService {
 
   private readonly SPREADSHEET_ID = '1Wrsei4H72bpPTVINrTfBsFCGNEFESDIBfz7VkDJcDgQ';
   private readonly SHEET_API_KEY = 'AIzaSyAoAs8FDaXIXftX8g9qSnbG8s8KFLFHAJI';
+
   private readonly REC_HISTORY_RANGE = `'Recommendations Data'!A2:AC`;
   private readonly REC_HISTORY_URL = `https://sheets.googleapis.com/v4/spreadsheets/${this.SPREADSHEET_ID}/values/${this.REC_HISTORY_RANGE}?key=${this.SHEET_API_KEY}`;
+  private readonly LEAST_POPULAR_HISTORY_RANGE = `'Least Popular Characters Data'!A2:Z`;
+  private readonly LEAST_POPULAR_HISTORY_URL = `https://sheets.googleapis.com/v4/spreadsheets/${this.SPREADSHEET_ID}/values/${this.LEAST_POPULAR_HISTORY_RANGE}?key=${this.SHEET_API_KEY}`;
 
   private readonly MANGA_DATA_URL = "https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?action=data"
   private readonly DAILY_MANGADLE_URL = "https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?action=daily"
@@ -36,6 +39,8 @@ export class MangaDataService {
   private gameHistory$: Observable<HistoryEntry[]> | null = null;
   private recHistory$: Observable<HistoryEntry[]> | null = null;
   private fullRecHistoryData$: Observable<any[][]> | null = null; // New cache for raw rec history
+  private fullLeastPopularHistoryData$: Observable<any[][]> | null = null; // New cache for raw least popular history
+  private leastPopularHistory$: Observable<HistoryEntry[]> | null = null;
   private characterNames$: Observable<string[]> | null = null;
 
   /**
@@ -185,6 +190,38 @@ export class MangaDataService {
   }
 
   /**
+   * Fetches the chronological list of all "Least Popular" games.
+   */
+  getLeastPopularHistory(): Observable<HistoryEntry[]> {
+    if (this.leastPopularHistory$) {
+      return this.leastPopularHistory$;
+    }
+
+    this.leastPopularHistory$ = this.getFullLeastPopularHistoryData().pipe(
+      map(fullHistoryData => {
+        if (!fullHistoryData) {
+          return [];
+        }
+        const playableHistory = fullHistoryData.slice(0, -1);
+
+        return playableHistory
+          .filter(row => row && row[0] && String(row[0]).trim() !== '')
+          .map((row: any[]): HistoryEntry => ({
+            date: this.formatDateFromSheet(row[0]),
+            title: row[1], // Assuming English title is in the second column
+            jp_title: row[1], // Assuming the same for now
+            image: row[2], // Assuming an image URL is in the third column
+            score: 0,
+            popularity: 0,
+            gameMode: 'Least Popular'
+          }));
+      }),
+      shareReplay(1)
+    );
+    return this.leastPopularHistory$;
+  }
+
+  /**
    * Fetches the data for the daily "Guess by Recommendations" game.
    */
   getRecommendationsGame(date?: string | null): Observable<RecommendationsData> {
@@ -205,7 +242,7 @@ export class MangaDataService {
             base_title: gameRow[1],
             base_image_url: gameRow[3],
             base_genres: gameRow[4],
-            base_themes: gameRow[6]
+            base_themes: gameRow[7]
           } as any;
 
           // The recommendations start at column F (index 5)
@@ -238,8 +275,43 @@ export class MangaDataService {
   /**
    * Fetches the data for the daily "Guess by Least Popular" game.
    */
-  getLeastPopularGame(): Observable<LeastPopularData> {
-    return this.http.get<LeastPopularData>(this.DAILY_LEAST_POPULAR_URL);
+  getLeastPopularGame(date?: string | null): Observable<LeastPopularData> {
+    // If a date is provided, it's a historical game.
+    if (date) {
+      return this.getFullLeastPopularHistoryData().pipe(
+        map(fullHistoryData => {
+          const gameRow = fullHistoryData.find(row => this.formatDateFromSheet(row[0]) === date);
+          if (!gameRow) throw new Error(`Least Popular game data for date ${date} not found.`);
+
+          // Manually construct the LeastPopularData object from the sheet row.
+          const leastPopularData: LeastPopularData = {
+            baseTitle: gameRow[1],
+            baseId: 0, // Assuming baseId is not in the history sheet
+            characters: []
+          };
+
+          // Characters start at column D (index 3)
+          for (let i = 0; i < 5; i++) {
+            const name = gameRow[4 + i * 4];      // Column E
+            const imageUrl = gameRow[6 + i * 4];  // Column G
+            const favorites = gameRow[7 + i * 4]; // Column H
+            if (name && favorites && imageUrl) {
+              leastPopularData.characters.push({
+                id: 0, // Assuming character ID is not in the history sheet
+                name: name,
+                favorites: parseInt(favorites, 10),
+                imageUrl: imageUrl
+              });
+            }
+          }
+          return leastPopularData;
+        })
+      );
+    }
+    // For the current day's game, fetch from the dedicated daily URL
+    return this.http.get<LeastPopularData>(this.DAILY_LEAST_POPULAR_URL).pipe(
+      tap(data => console.log('Fetched daily least popular game:', data))
+    );
   }
 
   /**
@@ -247,6 +319,18 @@ export class MangaDataService {
    */
   getTraitsGame(): Observable<TraitsData> {
     return this.http.get<TraitsData>(this.DAILY_TRAITS_URL);
+  }
+
+  // New private method to create a single, cached source for the raw least popular history data
+  private getFullLeastPopularHistoryData(): Observable<any[][]> {
+    if (this.fullLeastPopularHistoryData$) {
+      return this.fullLeastPopularHistoryData$;
+    }
+    this.fullLeastPopularHistoryData$ = this.http.get<{ values: any[][] }>(this.LEAST_POPULAR_HISTORY_URL).pipe(
+      map(response => response.values || []),
+      shareReplay(1)
+    );
+    return this.fullLeastPopularHistoryData$;
   }
 
   /**
