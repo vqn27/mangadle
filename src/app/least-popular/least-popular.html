@@ -1,23 +1,27 @@
 <div class="content-wrapper">
 
   <!-- Result Popup -->
-  <div *ngIf="guessResult() === 'correct'" class="result-popup-backdrop" (click)="closePopup()">
+  @if (guessResult() === 'correct') {
+    <div class="result-popup-backdrop" (click)="closePopup()">
     <div class="result-popup-content correct" (click)="$event.stopPropagation()">
       <h2>Congratulations! 🎉</h2>
       <p>You guessed the correct manga!</p>
       <p>The answer was: <strong>{{ dailyData()?.baseTitle }}</strong></p>
       <button class="popup-close-button correct" (click)="closePopup()">Play Again Tomorrow</button>
     </div>
-  </div>
+    </div>
+  }
 
   <!-- Incorrect Guess Popup -->
-  <div *ngIf="guessResult() === 'incorrect'" class="result-popup-backdrop" (click)="closePopup()">
+  @if (guessResult() === 'incorrect') {
+    <div class="result-popup-backdrop" (click)="closePopup()">
     <div class="result-popup-content incorrect" (click)="$event.stopPropagation()">
       <h2>Incorrect! 🤔</h2>
       <p>The correct manga is <strong>{{ dailyData()?.baseTitle }}</strong>!</p>
       <button class="popup-close-button incorrect" (click)="closePopup()">Try Again Tomorrow</button>
     </div>
-  </div>
+    </div>
+  }
 
   <h1 class="title">Guess by the Least Popular Characters</h1>
 
@@ -27,11 +31,13 @@
     <button class="nav-arrow" (click)="navigateToDay(1)" [disabled]="isLastDay()">&#9654;</button>
   </div>
 
-  <div *ngIf="isLoading()" class="loading-container">
-    <p>Loading least popular characters...</p>
-  </div>
+  @if (isLoading()) {
+    <div class="loading-container">
+      <p>Loading least popular characters...</p>
+    </div>
+  }
 
-  <ng-container *ngIf="!isLoading()">
+  @if (!isLoading()) {
     <div class="character-panels-container">
       @for (char of dailyData()?.characters; track char.id; let i = $index) {
         <div class="character-card">
@@ -56,12 +62,13 @@
       }
     </div>
 
-    <div *ngIf="isGameWon() || isGameLost()"
-         class="answer-container"
-         [class.correct-answer]="isGameWon()"
-         [class.incorrect-answer]="isGameLost()">
-      The correct answer was: {{ dailyData()?.baseTitle }}
-    </div>
+    @if (isGameWon() || isGameLost()) {
+      <div class="answer-container"
+           [class.correct-answer]="isGameWon()"
+           [class.incorrect-answer]="isGameLost()">
+        The correct answer was: {{ dailyData()?.baseTitle }}
+      </div>
+    }
 
     <!-- The main searchable dropdown component -->
     <div class="search-wrapper">
@@ -79,7 +86,9 @@
                 [disabled]="isGameWon() || isGameLost()"
                 class="search-input"
               >
-              <button *ngIf="searchTerm() && !isGameWon() && !isGameLost()" (click)="clearSearch()" class="clear-button" type="button">&times;</button>
+              @if (searchTerm() && !isGameWon() && !isGameLost()) {
+                <button (click)="clearSearch()" class="clear-button" type="button">&times;</button>
+              }
             </div>
             <button class="submit-button" (click)="checkGuess()" [disabled]="isSubmitting() || isGameWon() || isGameLost()" [class.correct-guess]="isGameWon()" [class.incorrect-guess]="isGameLost()">
               Guess
@@ -87,22 +96,24 @@
           </div>
       
           <!-- 2. Dropdown List (Custom Options Overlay) -->
-          <div *ngIf="isDropdownOpen()" class="dropdown-list">
-            <!-- No Results Message -->
-            <div *ngIf="filteredItemList().length === 0" class="no-results-option">
-              No results found for "{{ searchTerm() }}"
-            </div>
+          @if (isDropdownOpen()) {
+            <div class="dropdown-list">
+              <!-- No Results Message -->
+              @if (filteredItemList().length === 0) {
+                <div class="no-results-option">No results found for "{{ searchTerm() }}"</div>
+              }
       
-            <!-- Options Loop -->
-            @for (item of filteredItemList(); track item.title) {
-              <div class="dropdown-option" (mousedown)="selectItem(item)" [class.selected]="item.title === selectedItem()?.title">
-                <div class="option-details">
-                  <span class="option-name">{{ item.title }}</span>
+              <!-- Options Loop -->
+              @for (item of filteredItemList(); track item.title) {
+                <div class="dropdown-option" (mousedown)="selectItem(item)" [class.selected]="item.title === selectedItem()?.title">
+                  <div class="option-details">
+                    <span class="option-name">{{ item.title }}</span>
+                  </div>
                 </div>
-              </div>
-            }
-          </div>
+              }
+            </div>
+          }
         </div>
     </div>
-  </ng-container>
+  }
 </div>
