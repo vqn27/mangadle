@@ -237,20 +237,6 @@ app-search {
     color: #374151; /* gray-700 */
 }
 
-/* Submit Button */
-.submit-button {
-    padding: 12px 20px;
-    border: none;
-    background-color: #6d28d9; /* purple-700 */
-    color: white;
-    border-radius: 8px;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color 0.2s;
-    white-space: nowrap; /* Prevent text wrapping */
-}
-
 .submit-button:hover {
     background-color: #5b21b6; /* Darker purple */
 }
@@ -272,46 +258,6 @@ app-search {
   background-color: #16a34a; /* green-600 */
 }
 
-.result-popup-content {
-  background-color: var(--card-bg, white);
-  padding: 24px 32px;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-  text-align: center;
-  width: 90%;
-  max-width: 400px;
-}
-
-.result-popup-content h2 {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: var(--text-primary, #1f2937);
-  margin-top: 0;
-  margin-bottom: 8px;
-}
-
-.result-popup-content p {
-  margin: 4px 0;
-  color: var(--text-secondary, #4b5563);
-  font-size: 1rem;
-}
-
-/* Dropdown List */
-.dropdown-list {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    margin-top: 8px;
-    background-color: var(--card-bg, white);
-    border: 1px solid var(--input-border, #e5e7eb);
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    max-height: 300px;
-    overflow-y: auto;
-    z-index: 10;
-}
-
 /* Dropdown Option */
 .dropdown-option {
     display: flex;
@@ -320,26 +266,6 @@ app-search {
     cursor: pointer;
     color: var(--text-primary, #1f2937);
     transition: background-color 0.15s;
-}
-
-.dropdown-option:hover {
-    background-color: var(--input-bg, #f3f4f6);
-}
-
-.dropdown-option.selected {
-    background-color: #dbeafe; /* blue-100 */
-    color: #1d4ed8; /* blue-700 */
-}
-
-.option-details {
-    display: flex;
-    flex-direction: column;
-}
-
-.no-results-option {
-    padding: 10px 16px;
-    color: var(--text-secondary, #6b7280);
-    font-style: italic;
 }
 
 /* --- Date Navigator --- */
