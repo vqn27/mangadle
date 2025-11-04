@@ -6,7 +6,7 @@ import { filter } from 'rxjs/operators';
 @Component({
   selector: 'app-root',
   standalone: true, // The App component is also standalone
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive], 
+  imports: [CommonModule, RouterOutlet, RouterLink], 
   template: `
     <div class="app-container">
       <nav class="sidebar">
@@ -32,7 +32,9 @@ import { filter } from 'rxjs/operators';
           <span class="sidebar-link-icon">📉</span>
           <span class="sidebar-link-text">Guess by Least Popular Characters</span>
         </a>
-        <a routerLink="/traits" class="sidebar-link" routerLinkActive="active">
+        <a routerLink="/traits" 
+           class="sidebar-link" 
+           [class.active]="isTraitsRouteActive()">
           <span class="sidebar-link-icon">🧠</span>
           <span class="sidebar-link-text">Guess by Character Traits</span>
         </a>
@@ -102,6 +104,22 @@ import { filter } from 'rxjs/operators';
       transition: background-color 0.3s ease;
       border-top-right-radius: 16px;
       border-bottom-right-radius: 16px;
+    }
+
+    .sidebar-divider {
+      height: 1px;
+      background-color: var(--sidebar-border);
+      margin: 16px 0;
+    }
+
+    .sidebar-section-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--sidebar-text);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0 16px;
+      margin: 8px 0;
     }
 
     .sidebar-header {
@@ -232,6 +250,7 @@ export class App {
   isMangaPanelRouteActive = signal(false);
   isRecommendationRouteActive = signal(false);
   isLeastPopularRouteActive = signal(false);
+  isTraitsRouteActive = signal(false);
 
   constructor() {
     // Effect to check the current route and highlight the correct sidebar link.
@@ -251,6 +270,10 @@ export class App {
       // "Least Popular" is active for its main, historical, and history pages.
       const isLeastPopularActive = url.startsWith('/least-popular') || url === '/history-least-popular';
       this.isLeastPopularRouteActive.set(isLeastPopularActive);
+
+      // "Traits" is active for its main, historical, and history pages.
+      const isTraitsActive = url.startsWith('/traits') || url === '/history-traits';
+      this.isTraitsRouteActive.set(isTraitsActive);
     });
 
     // This effect will run whenever `isDarkMode` changes, saving the preference.

@@ -1,10 +1,18 @@
 <div class="content-wrapper">
   <h1 class="title">Guess the Character by Their Traits</h1>
 
+  <div class="date-navigator" *ngIf="!isLoading()">
+    <button class="nav-arrow" (click)="navigateToDay(-1)" [disabled]="isFirstDay() || isLoading()">&#9664;</button>
+    <button class="game-date-text" (click)="navigateToHistory()" [disabled]="isLoading()">
+      {{ gameDateText() }}
+    </button>
+    <button class="nav-arrow" (click)="navigateToDay(1)" [disabled]="isLastDay() || isLoading()">&#9654;</button>
+  </div>
+
   <!-- Loading Spinner -->
   @if (isLoading()) {
     <div class="loading-container">
-      <p>Loading character with their traits...</p>
+      <p>Loading character and their traits...</p>
     </div>
   }
   

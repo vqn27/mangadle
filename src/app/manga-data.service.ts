@@ -21,6 +21,8 @@ export class MangaDataService {
   private readonly REC_HISTORY_URL = `https://sheets.googleapis.com/v4/spreadsheets/${this.SPREADSHEET_ID}/values/${this.REC_HISTORY_RANGE}?key=${this.SHEET_API_KEY}`;
   private readonly LEAST_POPULAR_HISTORY_RANGE = `'Least Popular Characters Data'!A2:Z`;
   private readonly LEAST_POPULAR_HISTORY_URL = `https://sheets.googleapis.com/v4/spreadsheets/${this.SPREADSHEET_ID}/values/${this.LEAST_POPULAR_HISTORY_RANGE}?key=${this.SHEET_API_KEY}`;
+  private readonly TRAITS_HISTORY_RANGE = `'Character Traits Data'!A2:I`;
+  private readonly TRAITS_HISTORY_URL = `https://sheets.googleapis.com/v4/spreadsheets/${this.SPREADSHEET_ID}/values/${this.TRAITS_HISTORY_RANGE}?key=${this.SHEET_API_KEY}`;
 
   private readonly MANGA_DATA_URL = "https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?action=data"
   private readonly DAILY_MANGADLE_URL = "https://script.google.com/macros/s/AKfycbyQrKZxxXP_6A_CG5zpY4uhPr7nlOu5ILZNBi9hN_rv8p2UL91eIpRM4vGI8rjUeWx5/exec?action=daily"
@@ -40,6 +42,8 @@ export class MangaDataService {
   private recHistory$: Observable<HistoryEntry[]> | null = null;
   private fullRecHistoryData$: Observable<any[][]> | null = null; // New cache for raw rec history
   private fullLeastPopularHistoryData$: Observable<any[][]> | null = null; // New cache for raw least popular history
+  private fullTraitsHistoryData$: Observable<any[][]> | null = null;
+  private traitsHistory$: Observable<HistoryEntry[]> | null = null;
   private leastPopularHistory$: Observable<HistoryEntry[]> | null = null;
   private characterNames$: Observable<string[]> | null = null;
 
@@ -222,6 +226,38 @@ export class MangaDataService {
   }
 
   /**
+   * Fetches the chronological list of all "Character Traits" games.
+   */
+  getTraitsHistory(): Observable<HistoryEntry[]> {
+    if (this.traitsHistory$) {
+      return this.traitsHistory$;
+    }
+
+    this.traitsHistory$ = this.getFullTraitsHistoryData().pipe(
+      map(fullHistoryData => {
+        if (!fullHistoryData) {
+          return [];
+        }
+        const playableHistory = fullHistoryData.slice(0, -1);
+
+        return playableHistory
+          .filter(row => row && row[0] && String(row[0]).trim() !== '')
+          .map((row: any[]): HistoryEntry => ({
+            date: this.formatDateFromSheet(row[0]),
+            title: row[2], // Character Name (for localStorage key matching)
+            jp_title: row[5], // Manga Title
+            image: row[7], // Picture URL
+            score: 0,
+            popularity: 0,
+            gameMode: 'Traits'
+          }));
+      }),
+      shareReplay(1)
+    );
+    return this.traitsHistory$;
+  }
+
+  /**
    * Fetches the data for the daily "Guess by Recommendations" game.
    */
   getRecommendationsGame(date?: string | null): Observable<RecommendationsData> {
@@ -317,9 +353,35 @@ export class MangaDataService {
   /**
    * Fetches the data for the daily "Guess by Traits" game.
    */
-  getTraitsGame(): Observable<TraitsData> {
-    return this.http.get<TraitsData>(this.DAILY_TRAITS_URL);
+  getTraitsGame(date?: string | null): Observable<TraitsData> {
+    if (date) {
+      return this.getFullTraitsHistoryData().pipe(
+        map(fullHistoryData => {
+          const gameRow = fullHistoryData.find(row => this.formatDateFromSheet(row[0]) === date);
+          if (!gameRow) throw new Error(`Traits game data for date ${date} not found.`);
+
+          const parsedTags = this.parseTagsArray(gameRow[5]); // Column E: Tags
+
+          const traitsData: TraitsData = {
+            baseTitle: gameRow[6], // Column G: Manga Title
+            baseId: gameRow[1], // Character ID
+            characterName: gameRow[2], // Column C: Character Name
+            hairColor: gameRow[3], // Column D: Hair Color
+            gender: gameRow[4], // Column E: Gender
+            animeTitle: gameRow[6], // Column G: Anime Title
+            picture: gameRow[8], // Column H: Picture URL
+            tags: parsedTags
+          };
+          return traitsData;
+        })
+      );
+    }
+    return this.http.get<TraitsData>(this.DAILY_TRAITS_URL).pipe(
+      tap(data => console.log('Fetched daily traits game:', data))
+    );
   }
+
+
 
   // New private method to create a single, cached source for the raw least popular history data
   private getFullLeastPopularHistoryData(): Observable<any[][]> {
@@ -331,6 +393,17 @@ export class MangaDataService {
       shareReplay(1)
     );
     return this.fullLeastPopularHistoryData$;
+  }
+
+  private getFullTraitsHistoryData(): Observable<any[][]> {
+    if (this.fullTraitsHistoryData$) {
+      return this.fullTraitsHistoryData$;
+    }
+    this.fullTraitsHistoryData$ = this.http.get<{ values: any[][] }>(this.TRAITS_HISTORY_URL).pipe(
+      map(response => response.values || []),
+      shareReplay(1)
+    );
+    return this.fullTraitsHistoryData$;
   }
 
   /**
@@ -374,5 +447,14 @@ export class MangaDataService {
       return `${jsDate.getUTCMonth() + 1}/${jsDate.getUTCDate()}/${jsDate.getUTCFullYear()}`;
     }
     return String(sheetDate); // Return as-is if it's an unexpected format
+  }
+
+  private parseTagsArray(str: string): string[] {
+    if (!str || str.length <= 2) return [];
+    // This regex finds all strings enclosed in single quotes.
+    const matches = str.match(/'([^']*)'/g);
+    if (!matches) return [];
+    // For each match, remove the surrounding quotes to get the clean tag.
+    return matches.map(match => match.substring(1, match.length - 1));
   }
 }

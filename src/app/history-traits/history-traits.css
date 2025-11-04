@@ -1,0 +1,86 @@
+.history-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 16px;
+  width: 100%;
+  margin-bottom: 24px;
+}
+
+.history-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid var(--card-border);
+  background-color: var(--card-bg);
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  font-family: inherit;
+  text-align: center;
+}
+
+.history-button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.history-button-day {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.history-button-date {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+/* Style for games that have been played */
+.history-button.guessed {
+  background-color: #6d28d9; /* purple-700 */
+  border-color: #5b21b6;
+}
+
+.history-button.guessed .history-button-day,
+.history-button.guessed .history-button-date {
+  color: #fff;
+}
+
+.pagination-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.pagination-button {
+  padding: 8px 16px;
+  border: 1px solid var(--button-secondary-border, #d1d5db);
+  background-color: var(--button-secondary-bg, #fff);
+  color: var(--button-secondary-text, #374151);
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.pagination-button:hover:not(:disabled) {
+  background-color: var(--button-secondary-hover-bg, #f3f4f6);
+  color: var(--button-secondary-hover-text, #1f2937);
+}
+
+.pagination-button:disabled {
+  background-color: var(--button-disabled-bg, #f3f4f6);
+  color: var(--button-disabled-text, #9ca3af);
+  cursor: not-allowed;
+  border-color: var(--button-disabled-border, #e5e7eb);
+}
+
+.pagination-text {
+  font-weight: 500;
+  color: var(--text-secondary);
+}
