@@ -244,8 +244,29 @@ export class LeastPopularComponent implements OnInit {
     }).subscribe({
       next: ({ fullList, dailyData, history }) => {
         this.fullItemList = fullList;
-        this.dailyData.set(dailyData);
 
+        // If it's a historical game, the data is already in the correct format.
+        // If it's the current day's game, we need to process it from the raw daily data.
+        if (!this.isHistoricGame()) {
+            const processedData: LeastPopularData = {
+                baseTitle: (dailyData as any).base_title, // Corrected property name
+                baseId: dailyData.baseId,
+                characters: []
+            };
+            for (let i = 1; i <= 10; i++) { // Assuming up to 10 characters
+                if ((dailyData as any)[`char_name_${i}`]) {
+                    processedData.characters.push({
+                        id: (dailyData as any)[`char_id_${i}`],
+                        name: (dailyData as any)[`char_name_${i}`],
+                        favorites: (dailyData as any)[`char_favorites_${i}`],
+                        imageUrl: (dailyData as any)[`char_image_url_${i}`]
+                    });
+                }
+            }
+            this.dailyData.set(processedData);
+        } else {
+            this.dailyData.set(dailyData);
+        }
         // --- Navigation and Date Logic ---
         const today = new Date();
         const todayFormatted = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
