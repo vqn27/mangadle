@@ -237,20 +237,6 @@ app-search {
     color: #374151; /* gray-700 */
 }
 
-/* Submit Button */
-.submit-button {
-    padding: 12px 20px;
-    border: none;
-    background-color: #6d28d9; /* purple-700 */
-    color: white;
-    border-radius: 8px;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color 0.2s;
-    white-space: nowrap; /* Prevent text wrapping */
-}
-
 .submit-button:hover {
     background-color: #5b21b6; /* Darker purple */
 }
@@ -272,46 +258,6 @@ app-search {
   background-color: #16a34a; /* green-600 */
 }
 
-.result-popup-content {
-  background-color: var(--card-bg, white);
-  padding: 24px 32px;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-  text-align: center;
-  width: 90%;
-  max-width: 400px;
-}
-
-.result-popup-content h2 {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: var(--text-primary, #1f2937);
-  margin-top: 0;
-  margin-bottom: 8px;
-}
-
-.result-popup-content p {
-  margin: 4px 0;
-  color: var(--text-secondary, #4b5563);
-  font-size: 1rem;
-}
-
-/* Dropdown List */
-.dropdown-list {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    margin-top: 8px;
-    background-color: var(--card-bg, white);
-    border: 1px solid var(--input-border, #e5e7eb);
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    max-height: 300px;
-    overflow-y: auto;
-    z-index: 10;
-}
-
 /* Dropdown Option */
 .dropdown-option {
     display: flex;
@@ -322,25 +268,72 @@ app-search {
     transition: background-color 0.15s;
 }
 
-.dropdown-option:hover {
-    background-color: var(--input-bg, #f3f4f6);
+/* --- Date Navigator --- */
+.date-navigator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  position: relative;
+  z-index: 10;
 }
 
-.dropdown-option.selected {
-    background-color: #dbeafe; /* blue-100 */
-    color: #1d4ed8; /* blue-700 */
+.nav-arrow {
+  background: var(--input-bg, #f3f4f6);
+  border: 1px solid var(--card-border, #e2e8f0);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-secondary, #6b7280);
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
 }
 
-.option-details {
-    display: flex;
-    flex-direction: column;
+.nav-arrow:hover:not(:disabled) {
+  color: var(--text-primary, #1f2937);
+  background-color: #e5e7eb;
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
-.no-results-option {
-    padding: 10px 16px;
-    color: var(--text-secondary, #6b7280);
-    font-style: italic;
+.nav-arrow:disabled, .nav-arrow:disabled:hover {
+  background-color: var(--button-disabled-bg, #f9fafb);
+  color: var(--button-disabled-text, #d1d5db);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
+
+.game-date-text {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-secondary, #6b7280);
+  padding: 4px 12px;
+  background-color: var(--input-bg, #f3f4f6);
+  border-radius: 8px;
+  text-decoration: none;
+  transition: background-color 0.2s, color 0.2s;
+  user-select: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+button.game-date-text:hover {
+  background-color: #e5e7eb;
+  color: var(--text-primary, #1f2937);
+}
+
+:host-context(.dark) button.game-date-text:hover {
+  background-color: var(--button-secondary-hover-bg);
+}
+
 
 @media (max-width: 768px) {
   .content-wrapper {
