@@ -20,7 +20,9 @@ import { filter } from 'rxjs/operators';
           <span class="sidebar-link-icon">🖼️</span>
           <span class="sidebar-link-text">Guess by Manga Panel</span>
         </a>
-        <a routerLink="/recommendation" class="sidebar-link" routerLinkActive="active">
+        <a routerLink="/recommendation" 
+           class="sidebar-link" 
+           [class.active]="isRecommendationRouteActive()">
           <span class="sidebar-link-icon">👍</span>
           <span class="sidebar-link-text">Guess by Recommendations</span>
         </a>
@@ -226,16 +228,22 @@ export class App {
 
   isDarkMode = signal<boolean>(this.getInitialDarkMode());
   isMangaPanelRouteActive = signal(false);
+  isRecommendationRouteActive = signal(false);
 
   constructor() {
     // Effect to check the current route and highlight the correct sidebar link.
     this.router.events.pipe(
       filter((event): event is NavigationEnd => event instanceof NavigationEnd)
     ).subscribe((event: NavigationEnd) => {
-      // The "Manga Panel" link should be active for the root URL or any historical game URL.
       const url = event.urlAfterRedirects;
-      const isActive = url === '/' || url.startsWith('/game/') || url === '/history';
-      this.isMangaPanelRouteActive.set(isActive);
+
+      // "Manga Panel" is active for its main, historical, and history pages.
+      const isMangaPanelActive = url === '/' || url.startsWith('/game/') || url === '/history';
+      this.isMangaPanelRouteActive.set(isMangaPanelActive);
+
+      // "Recommendations" is active for its main, historical, and history pages.
+      const isRecommendationActive = url.startsWith('/recommendation') || url === '/history-recommendation';
+      this.isRecommendationRouteActive.set(isRecommendationActive);
     });
 
     // This effect will run whenever `isDarkMode` changes, saving the preference.
