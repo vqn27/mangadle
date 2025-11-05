@@ -1,8 +1,8 @@
 import { Component, signal, computed, inject, OnInit, PLATFORM_ID, effect } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
-import { Item, Character, TraitsData } from '../item.model';
+import { ActivatedRoute, Router } from '@angular/router';
+import { Item, Character, TraitsData, HistoryEntry } from '../item.model';
 import { forkJoin } from 'rxjs';
 import { MangaDataService } from '../manga-data.service';
 
@@ -17,9 +17,10 @@ import { MangaDataService } from '../manga-data.service';
   styleUrls: ['./traits.css', '../shared-styles.css']
 })
 export class TraitsComponent implements OnInit {
-  private http = inject(HttpClient);
   private platformId = inject(PLATFORM_ID);
   private mangaDataService = inject(MangaDataService);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
 
   // === UI State ===
   searchTerm = signal('');
@@ -28,12 +29,16 @@ export class TraitsComponent implements OnInit {
   isSourceHintRevealed = signal(false);
   isImageUnblurred = signal(false);
   isLoading = signal(true);
+  isHistoricGame = signal(false);
+  gameDateText = signal('');
 
   // === Game State ===
   guessResult = signal<'correct' | 'incorrect' | null>(null);
   isSubmitting = signal(false);
   isGameWon = signal(false);
   isGameLost = signal(false);
+  private gameHistory: HistoryEntry[] = [];
+  private currentDateIndex = -1;
 
   // === Data State ===
   characterNameList: string[] = []; // List of all character names for the dropdown
@@ -45,6 +50,12 @@ export class TraitsComponent implements OnInit {
 
   // State for unblurring tags
   unblurredTags = signal<{ [key: number]: boolean }>({});
+
+  /**
+   * Computed signals to determine if navigation arrows should be disabled.
+   */
+  isFirstDay = computed(() => this.currentDateIndex === 0);
+  isLastDay = computed(() => this.currentDateIndex >= this.gameHistory.length - 1);
 
   /**
    * Computed signal to filter the list in real-time based on the searchTerm.
@@ -68,7 +79,7 @@ export class TraitsComponent implements OnInit {
     effect(() => {
       const dailyData = this.dailyData();
       if (dailyData) {
-        const key = this.getStorageKey(dailyData.baseTitle);
+        const key = this.getStorageKey(dailyData.characterName);
         if (isPlatformBrowser(this.platformId) && key) {
           if (this.isGameWon()) {
             localStorage.setItem(key, 'won');
@@ -94,7 +105,7 @@ export class TraitsComponent implements OnInit {
       };
 
       if (dailyData && (Object.keys(tags).length > 0 || imageUnblurred || sourceRevealed) && isPlatformBrowser(this.platformId)) {
-        const hintKey = this.getHintCacheKey(dailyData.baseTitle);
+        const hintKey = this.getHintCacheKey(dailyData.characterName);
         localStorage.setItem(hintKey, JSON.stringify(hintsToCache));
       }
     });
@@ -102,7 +113,11 @@ export class TraitsComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.fetchMangaData();
+    const gameDate = this.route.snapshot.paramMap.get('date');
+    if (gameDate) {
+      this.isHistoricGame.set(true);
+    }
+    this.fetchMangaData(gameDate);
   }
 
   /**
@@ -166,6 +181,22 @@ export class TraitsComponent implements OnInit {
     this.searchTerm.set('');
   }
 
+  navigateToHistory(): void {
+    this.router.navigate(['/history-traits']);
+  }
+
+  navigateToDay(offset: number): void {
+    if (this.isLoading() || this.gameHistory.length === 0) return;
+
+    const newIndex = this.currentDateIndex + offset;
+    if (newIndex >= 0 && newIndex < this.gameHistory.length) {
+      const newDate = this.gameHistory[newIndex].date;
+      this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
+        this.router.navigate(['/traits', newDate]);
+      });
+    }
+  }
+
   /**
    * Checks if the user's selected manga matches the daily manga.
    */
@@ -182,7 +213,7 @@ export class TraitsComponent implements OnInit {
         this.isGameWon.set(true);
         // Cache the correct guess
         if (isPlatformBrowser(this.platformId)) {
-          const lastGuessKey = this.getLastGuessCacheKey(this.dailyData()!.baseTitle);
+          const lastGuessKey = this.getLastGuessCacheKey(this.dailyData()!.characterName);
           localStorage.setItem(lastGuessKey, this.searchTerm());
         }
       } else {
@@ -190,7 +221,7 @@ export class TraitsComponent implements OnInit {
         this.isGameLost.set(true);
         // Cache the incorrect guess
         if (isPlatformBrowser(this.platformId)) {
-          const lastGuessKey = this.getLastGuessCacheKey(this.dailyData()!.baseTitle);
+          const lastGuessKey = this.getLastGuessCacheKey(this.dailyData()!.characterName);
           localStorage.setItem(lastGuessKey, this.searchTerm());
         }
       }
@@ -209,10 +240,10 @@ export class TraitsComponent implements OnInit {
   /**
    * Generates a unique key for localStorage based on the manga title.
    */
-  private getStorageKey(title: string): string {
-    return `mangadle-traits-gameState-${title}`;
+  private getStorageKey(characterName: string): string {
+    return `mangadle-traits-gameState-${characterName}`;
   }
-
+  
   /**
    * Generates a unique key for caching the last guess for a specific manga.
    */
@@ -223,75 +254,50 @@ export class TraitsComponent implements OnInit {
   /**
    * Generates a unique key for caching hints for a specific manga.
    */
-  private getHintCacheKey(title: string): string {
-    return `mangadle-traits-hints-${title}`;
+  private getHintCacheKey(characterName: string): string {
+    return `mangadle-traits-hints-${characterName}`;
   }
 
   /**
    * Fetches data from the Google Apps Script URL.
    */
-  private fetchMangaData(): void {
+  private fetchMangaData(gameDate: string | null): void {
     forkJoin({
       characterNames: this.mangaDataService.getCharacterNames(),
-      dailyData: this.mangaDataService.getTraitsGame()
+      dailyData: this.mangaDataService.getTraitsGame(gameDate),
+      history: this.mangaDataService.getTraitsHistory()
     }).subscribe({
-      next: ({ characterNames, dailyData }) => {
+      next: ({ characterNames, dailyData, history }) => {
         // 1. Set the character name list for the dropdown
         this.characterNameList = characterNames;
 
-        // 2. Parse the incoming daily data and map it to the TraitsData interface
-        const rawData = dailyData as any;
-        
-        // The manga title is in a stringified array, e.g., "['Joukamachi no Dandelion']"
-        // We remove the surrounding [' and '] to get the full title, which may contain commas.
-        // To handle this safely, we convert it to a real array and take the first element.
-        const parseStringifiedArray = (str: string): string[] => { // This will be used for manga, anime, and tags
-          if (!str || str.length <= 2) return [];
-          
-          // Use a regex to find everything between the first pair of double quotes.
-          let match = str.match(/"(.*?)"/);
-          if (match && match[1]) {
-            return [match[1]];
-          }
-          
-          // If no double quotes, fall back to finding everything between the first pair of single quotes.
-          match = str.match(/'(.*?)'/);
-          return match && match[1] ? [match[1]] : [];
-        };
-        const mangaTitles = parseStringifiedArray(rawData.manga);
-        const animeTitles = parseStringifiedArray(rawData.anime);
+        // The daily game data from the Apps Script URL might have a different structure
+        // than the historical data from the sheet. We normalize it here.
+        const gameData = this.normalizeTraitsData(dailyData);
+        this.dailyData.set(gameData);
+        console.log('Fetched daily traits game data:', gameData);
 
-        // Safely get the first title, or an empty string if the array is empty.
-        const mangaTitleRaw = mangaTitles[0] || ''; // Use the first title found
-        const animeTitleRaw = animeTitles[0] || '';
+        const today = new Date();
+        const todayFormatted = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
+        let displayDate: string;
 
-        const displayTitle = mangaTitleRaw;
+        if (this.isHistoricGame()) {
+          displayDate = gameDate!;
+        } else {
+          // Find today's game in the history list to get its formatted date string
+          const todayInHistory = history.find(h => h.title === gameData.characterName);
+          displayDate = todayInHistory ? todayInHistory.date : todayFormatted;
+        }
+        this.gameDateText.set(displayDate);
 
-        // The traits are in a stringified array, e.g., "['Tag1', 'Tag2']"
-        const parseTagsArray = (str: string): string[] => {
-          if (!str || str.length <= 2) return [];
-          // This regex finds all strings enclosed in single quotes.
-          const matches = str.match(/'([^']*)'/g);
-          if (!matches) return [];
-          // For each match, remove the surrounding quotes to get the clean tag.
-          return matches.map(match => match.substring(1, match.length - 1));
-        };
-        const parsedTags = parseTagsArray(rawData.tags);
-
-        this.dailyData.set({
-          baseTitle: displayTitle,
-          baseId: rawData.id, // Character ID from the data
-          characterName: rawData['names_(proper)'],
-          hairColor: rawData.hair_color,
-          gender: rawData.gender,
-          picture: rawData.picture,
-          animeTitle: animeTitleRaw,
-          tags: parsedTags
-        });
+        // Sort history and find current game index for navigation
+        const sortedHistory = history.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        this.gameHistory = sortedHistory;
+        this.currentDateIndex = sortedHistory.findIndex(entry => entry.date === displayDate);
 
         // 3. Check for cached game state
         if (isPlatformBrowser(this.platformId)) {
-          const key = this.getStorageKey(displayTitle);
+          const key = this.getStorageKey(gameData.characterName);
           const gameState = localStorage.getItem(key);
           if (gameState === 'won') {
             this.isGameWon.set(true);
@@ -303,13 +309,13 @@ export class TraitsComponent implements OnInit {
 
           // Load last guess if game is over
           if (gameState) {
-            const lastGuessKey = this.getLastGuessCacheKey(displayTitle);
+            const lastGuessKey = this.getLastGuessCacheKey(gameData.characterName);
             const lastGuess = localStorage.getItem(lastGuessKey);
             if (lastGuess) this.searchTerm.set(lastGuess);
           }
 
           // Load cached unblurred tag states
-          const hintKey = this.getHintCacheKey(displayTitle);
+          const hintKey = this.getHintCacheKey(gameData.characterName);
           const cachedUnblurredStates = localStorage.getItem(hintKey);
           if (cachedUnblurredStates) { 
             const hints = JSON.parse(cachedUnblurredStates);
@@ -333,5 +339,54 @@ export class TraitsComponent implements OnInit {
         this.isLoading.set(false);
       }
     });
+  }
+
+  /**
+   * Normalizes the data structure for the traits game, as the daily endpoint
+   * may return a different format (e.g., stringified arrays) than the historical data.
+   */
+  private normalizeTraitsData(data: any): TraitsData {
+    const parseStringifiedTitle = (str: string): string => {
+      if (!str || str.length <= 2) return str;
+
+      // Use a regex to find everything between the first pair of double quotes.
+      let match = str.match(/"(.*?)"/);
+      if (match && match[1]) {
+        return match[1];
+      }
+
+      // If no double quotes, fall back to finding everything between the first pair of single quotes.
+      match = str.match(/'(.*?)'/);
+      if (match && match[1]) {
+        return match[1];
+      }
+
+      return str;
+    };
+
+    const parseStringifiedTags = (str: string): string[] => {
+      if (!str) return [];
+      const matches = str.match(/'([^']*)'/g);
+      return matches ? matches.map(match => match.substring(1, match.length - 1)) : [];
+    };
+
+    // Historical data has pre-parsed tags (an array), daily data has a string.
+    const tags = Array.isArray(data.tags) ? data.tags : parseStringifiedTags(data.tags);
+
+    // Historical data uses `baseTitle`, daily uses `manga`. Both might be stringified.
+    const baseTitleRaw = data.baseTitle || data.manga;
+    const animeTitleRaw = data.animeTitle || data.anime;
+
+    return {
+      // Apply the title parsing to whichever title property exists.
+      baseTitle: parseStringifiedTitle(baseTitleRaw),
+      animeTitle: parseStringifiedTitle(animeTitleRaw),
+      baseId: data.baseId || data.id,
+      characterName: data.characterName || data['names_(proper)'],
+      hairColor: data.hairColor || data.hair_color,
+      gender: data.gender,
+      picture: data.picture,
+      tags: tags
+    };
   }
 }
