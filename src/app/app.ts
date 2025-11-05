@@ -1,6 +1,7 @@
 import { Component, HostBinding, signal, effect, inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Router, NavigationEnd, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { LoadingService } from './loading.service';
 import { filter } from 'rxjs/operators';
 
 @Component({
@@ -14,26 +15,30 @@ import { filter } from 'rxjs/operators';
           <img src="logo.png" alt="Mangadle Logo" class="sidebar-logo" width="32" height="32">
           <h2 class="sidebar-title">Mangadle</h2>
         </div>
-        <a routerLink="/" 
-           class="sidebar-link" 
+        <a routerLink="/"
+           class="sidebar-link"
+           [class.disabled]="isGameLoading()"
            [class.active]="isMangaPanelRouteActive()">
           <span class="sidebar-link-icon">🖼️</span>
           <span class="sidebar-link-text">Guess by Manga Panel</span>
         </a>
-        <a routerLink="/recommendation" 
-           class="sidebar-link" 
+        <a routerLink="/recommendation"
+           class="sidebar-link"
+           [class.disabled]="isGameLoading()"
            [class.active]="isRecommendationRouteActive()">
           <span class="sidebar-link-icon">👍</span>
           <span class="sidebar-link-text">Guess by Recommendations</span>
         </a>
-        <a routerLink="/least-popular" 
-           class="sidebar-link" 
+        <a routerLink="/least-popular"
+           class="sidebar-link"
+           [class.disabled]="isGameLoading()"
            [class.active]="isLeastPopularRouteActive()">
           <span class="sidebar-link-icon">📉</span>
           <span class="sidebar-link-text">Guess by Least Popular Characters</span>
         </a>
-        <a routerLink="/traits" 
-           class="sidebar-link" 
+        <a routerLink="/traits"
+           class="sidebar-link"
+           [class.disabled]="isGameLoading()"
            [class.active]="isTraitsRouteActive()">
           <span class="sidebar-link-icon">🧠</span>
           <span class="sidebar-link-text">Guess by Character Traits</span>
@@ -188,6 +193,12 @@ import { filter } from 'rxjs/operators';
       font-weight: 600;
     }
 
+    .sidebar-link.disabled {
+      pointer-events: none;
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
     .debug-button {
       position: absolute;
       bottom: 20px;
@@ -245,12 +256,14 @@ export class App {
   private platformId = inject(PLATFORM_ID);
   private readonly darkModeKey = 'mangadle-dark-mode';
   private router = inject(Router);
+  loadingService = inject(LoadingService);
 
   isDarkMode = signal<boolean>(this.getInitialDarkMode());
   isMangaPanelRouteActive = signal(false);
   isRecommendationRouteActive = signal(false);
   isLeastPopularRouteActive = signal(false);
   isTraitsRouteActive = signal(false);
+  isGameLoading = this.loadingService.isGameLoading;
 
   constructor() {
     // Effect to check the current route and highlight the correct sidebar link.

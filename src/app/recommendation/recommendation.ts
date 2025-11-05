@@ -9,6 +9,7 @@ import { DomSanitizer } from '@angular/platform-browser';
 import { Item, Recommendations, baseRandomRec, RecommendationsData, HistoryEntry } from '../item.model';
 import { MangaDataService } from '../manga-data.service';
 import { DbService } from '../db.service';
+import { LoadingService } from '../loading.service';
 
 
 @Component({
@@ -30,6 +31,7 @@ export class Recommendation implements OnInit, OnDestroy {
   private dbService = inject(DbService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  private loadingService = inject(LoadingService);
 
   // Subject to automatically unsubscribe from observables on component destruction
   private destroy$ = new Subject<void>();
@@ -142,11 +144,12 @@ export class Recommendation implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    const gameDate = this.route.snapshot.paramMap.get('date');
-    if (gameDate) {
-      this.isHistoricGame.set(true);
-    }
-    this.fetchMangaData(gameDate);
+    this.route.paramMap.subscribe(params => {
+      const gameDate = params.get('date');
+      this.isHistoricGame.set(!!gameDate);
+      this.resetComponentState();
+      this.fetchMangaData(gameDate);
+    });
   }
 
   ngOnDestroy() {
@@ -224,9 +227,30 @@ export class Recommendation implements OnInit, OnDestroy {
   }
 
   /**
+   * Resets the component's state to its initial values. This is crucial
+   * when navigating between different game dates to ensure old data doesn't persist.
+   */
+  private resetComponentState(): void {
+    this.isLoading.set(true);
+    this.searchTerm.set('');
+    this.isDropdownOpen.set(false);
+    this.isBlurredHintVisible.set(false);
+    this.isGenreHintVisible.set(false);
+    this.guessResult.set(null);
+    this.isSubmitting.set(false);
+    this.isGameWon.set(false);
+    this.isGameLost.set(false);
+    this.selectedItem.set(undefined);
+    this.randomManga.set(undefined);
+    this.recommendations.set([]);
+    this.areImagesLoading.set(true);
+  }
+
+  /**
    * Fetches data from the Google Apps Script URL.
    */
   private fetchMangaData(gameDate: string | null): void {
+    this.loadingService.isGameLoading.set(true);
     forkJoin({
       fullList: this.mangaDataService.getFullMangaList(),
       dailyReccs: this.mangaDataService.getRecommendationsGame(gameDate),
@@ -345,8 +369,12 @@ export class Recommendation implements OnInit, OnDestroy {
       error: (err) => {
         console.error('Failed to fetch data from Google Apps Script. This could be a CORS issue if the script is not configured for public JSON access.', err);
         this.isLoading.set(false);
+        this.loadingService.isGameLoading.set(false);
       }
-    }).add(() => this.isLoading.set(false));
+    }).add(() => {
+      this.isLoading.set(false);
+      this.loadingService.isGameLoading.set(false);
+    });
   }
 
   private processAndSetRecommendations(reccsData: RecommendationsData): void {

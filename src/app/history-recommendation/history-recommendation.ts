@@ -39,11 +39,9 @@ export class HistoryRecommendationComponent implements OnInit {
       fullList: this.mangaDataService.getFullMangaList()
     }).subscribe({
       next: ({ history, today, fullList }) => {
-        // The daily endpoint returns YYYY-MM-DD, but the history sheet uses MM/DD/YYYY.
-        // Convert today's date to match the history format.
-        if (!today.date) return; // Guard against missing date
-        const [year, month, day] = today.date.split('-');
-        const formattedDate = `${parseInt(month, 10)}/${parseInt(day, 10)}/${year}`;
+        const todayDate = new Date();
+        const formattedDate = `${todayDate.getMonth() + 1}/${todayDate.getDate()}/${todayDate.getFullYear()}`;
+
         const baseMangaFromList = fullList.find(item => item.jp_title === today.base_title);
         const todayEntry: HistoryEntry = { // Now we can be sure the title is correct
           date: formattedDate,

@@ -6,6 +6,7 @@ import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { Item, Character, LeastPopularData, HistoryEntry } from '../item.model';
 import { forkJoin } from 'rxjs';
 import { MangaDataService } from '../manga-data.service';
+import { LoadingService } from '../loading.service';
 
 @Component({
   selector: 'app-least-popular',
@@ -22,6 +23,7 @@ export class LeastPopularComponent implements OnInit {
   private mangaDataService = inject(MangaDataService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  private loadingService = inject(LoadingService);
 
   // === UI State ===
   searchTerm = signal('');
@@ -102,11 +104,12 @@ export class LeastPopularComponent implements OnInit {
   }
 
   ngOnInit() {
-    const gameDate = this.route.snapshot.paramMap.get('date');
-    if (gameDate) {
-      this.isHistoricGame.set(true);
-    }
-    this.fetchMangaData(gameDate);
+    this.route.paramMap.subscribe(params => {
+      const gameDate = params.get('date');
+      this.isHistoricGame.set(!!gameDate);
+      this.resetComponentState();
+      this.fetchMangaData(gameDate);
+    });
   }
 
   /**
@@ -213,6 +216,24 @@ export class LeastPopularComponent implements OnInit {
   }
 
   /**
+   * Resets the component's state to its initial values. This is crucial
+   * when navigating between different game dates to ensure old data doesn't persist.
+   */
+  private resetComponentState(): void {
+    this.isLoading.set(true);
+    this.searchTerm.set('');
+    this.isDropdownOpen.set(false);
+    this.isHintRevealed.set(false);
+    this.guessResult.set(null);
+    this.isSubmitting.set(false);
+    this.isGameWon.set(false);
+    this.isGameLost.set(false);
+    this.selectedItem.set(undefined);
+    this.dailyData.set(undefined);
+    this.unblurredStates.set({});
+  }
+
+  /**
    * Generates a unique key for localStorage based on the manga title.
    */
   private getStorageKey(title: string): string {
@@ -237,6 +258,7 @@ export class LeastPopularComponent implements OnInit {
    * Fetches data from the Google Apps Script URL.
    */
   private fetchMangaData(gameDate: string | null): void {
+    this.loadingService.isGameLoading.set(true);
     forkJoin({
       fullList: this.mangaDataService.getFullMangaList(),
       dailyData: this.mangaDataService.getLeastPopularGame(gameDate),
@@ -327,10 +349,12 @@ export class LeastPopularComponent implements OnInit {
 
         console.log('Successfully fetched and processed data for least-popular game.');
         this.isLoading.set(false);
+        this.loadingService.isGameLoading.set(false);
       },
       error: (err) => {
         console.error('Failed to fetch least-popular data from Google Apps Script. This could be a CORS issue if the script is not configured for public JSON access.', err);
         this.isLoading.set(false);
+        this.loadingService.isGameLoading.set(false);
       }
     });
   }

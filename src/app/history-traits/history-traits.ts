@@ -3,6 +3,7 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { HistoryEntry } from '../item.model';
 import { MangaDataService } from '../manga-data.service';
+import { forkJoin } from 'rxjs';
 
 @Component({
   selector: 'app-history-traits',
@@ -32,21 +33,41 @@ export class HistoryTraitsComponent implements OnInit {
   });
 
   ngOnInit() {
-    this.fetchHistory();
-  }
+    this.isLoading.set(true);
+    forkJoin({
+      history: this.mangaDataService.getTraitsHistory(),
+      today: this.mangaDataService.getTraitsGame(null),
+    }).subscribe({
+      next: ({ history, today }) => {
+        const todayDate = new Date();
+        const formattedDate = `${todayDate.getMonth() + 1}/${todayDate.getDate()}/${todayDate.getFullYear()}`;
 
-  playHistoryGame(date: string) {
-    this.router.navigate(['/traits', date]);
-  }
+        const todayEntry: HistoryEntry = {
+          date: formattedDate,
+          title: today.characterName,
+          jp_title: today.characterName,
+          image: today.picture,
+          score: 0,
+          popularity: 0,
+          gameMode: 'Traits'
+        };
 
-  isGameGuessed(entry: HistoryEntry): boolean {
-    if (isPlatformBrowser(this.platformId)) {
-      // The key needs to match the one used in the traits component
-      const key = `mangadle-traits-gameState-${entry.title}`;
-      const gameState = localStorage.getItem(key);
-      return gameState === 'won' || gameState === 'lost';
-    }
-    return false;
+        // Add today's entry if it's not already in the history
+        if (!history.some(entry => entry.date === todayEntry.date)) {
+          history.push(todayEntry);
+        }
+
+        // Sort in chronological order to show the oldest games first
+        const sortedHistory = history.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        this.history.set(sortedHistory);
+        this.isLoading.set(false);
+      },
+      error: (err) => {
+        console.error('Failed to fetch traits history:', err);
+        this.error.set('Failed to load game history.');
+        this.isLoading.set(false);
+      }
+    });
   }
 
   nextPage() {
@@ -61,20 +82,17 @@ export class HistoryTraitsComponent implements OnInit {
     }
   }
 
-  private fetchHistory(): void {
-    this.isLoading.set(true);
-    this.mangaDataService.getTraitsHistory().subscribe({
-      next: (historyData) => {
-        // Sort in chronological order to show the oldest games first (Day 1, Day 2, etc.).
-        const sortedHistory = historyData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-        this.history.set(sortedHistory);
-        this.isLoading.set(false);
-      },
-      error: (err) => {
-        console.error('Failed to fetch traits history:', err);
-        this.error.set('Failed to load game history.');
-        this.isLoading.set(false);
-      }
-    });
+  playHistoryGame(date: string) {
+    this.router.navigate(['/traits', date]);
+  }
+
+  isGameGuessed(entry: HistoryEntry): boolean {
+    if (isPlatformBrowser(this.platformId)) {
+      // The key needs to match the one used in the traits component
+      const key = `mangadle-traits-gameState-${entry.title}`;
+      const gameState = localStorage.getItem(key);
+      return gameState === 'won' || gameState === 'lost';
+    }
+    return false;
   }
 }

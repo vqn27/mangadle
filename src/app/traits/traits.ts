@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Item, Character, TraitsData, HistoryEntry } from '../item.model';
 import { forkJoin } from 'rxjs';
+import { LoadingService } from '../loading.service';
 import { MangaDataService } from '../manga-data.service';
 
 @Component({
@@ -21,6 +22,7 @@ export class TraitsComponent implements OnInit {
   private mangaDataService = inject(MangaDataService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  private loadingService = inject(LoadingService);
 
   // === UI State ===
   searchTerm = signal('');
@@ -113,11 +115,13 @@ export class TraitsComponent implements OnInit {
   }
 
   ngOnInit() {
-    const gameDate = this.route.snapshot.paramMap.get('date');
-    if (gameDate) {
-      this.isHistoricGame.set(true);
-    }
-    this.fetchMangaData(gameDate);
+    this.route.paramMap.subscribe(params => {
+      const gameDate = params.get('date');
+      this.isHistoricGame.set(!!gameDate);
+      // Reset component state before fetching new data
+      this.resetComponentState();
+      this.fetchMangaData(gameDate);
+    });
   }
 
   /**
@@ -259,9 +263,30 @@ export class TraitsComponent implements OnInit {
   }
 
   /**
+   * Resets the component's state to its initial values. This is crucial
+   * when navigating between different game dates to ensure old data doesn't persist.
+   */
+  private resetComponentState(): void {
+    this.isLoading.set(true);
+    this.searchTerm.set('');
+    this.isDropdownOpen.set(false);
+    this.isHintRevealed.set(false);
+    this.isSourceHintRevealed.set(false);
+    this.isImageUnblurred.set(false);
+    this.guessResult.set(null);
+    this.isSubmitting.set(false);
+    this.isGameWon.set(false);
+    this.isGameLost.set(false);
+    this.selectedCharacter.set(undefined);
+    this.dailyData.set(undefined);
+    this.unblurredTags.set({});
+  }
+
+  /**
    * Fetches data from the Google Apps Script URL.
    */
   private fetchMangaData(gameDate: string | null): void {
+    this.loadingService.isGameLoading.set(true);
     forkJoin({
       characterNames: this.mangaDataService.getCharacterNames(),
       dailyData: this.mangaDataService.getTraitsGame(gameDate),
@@ -333,10 +358,12 @@ export class TraitsComponent implements OnInit {
 
         console.log('Successfully fetched and processed data for traits game.');
         this.isLoading.set(false);
+        this.loadingService.isGameLoading.set(false);
       },
       error: (err) => {
         console.error('Failed to fetch traits data from Google Apps Script.', err);
         this.isLoading.set(false);
+        this.loadingService.isGameLoading.set(false);
       }
     });
   }
