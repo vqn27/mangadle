@@ -8,6 +8,7 @@ import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { Item, RecommendationsData, HistoryEntry } from '../item.model';
 import { MangaDataService } from '../manga-data.service';
 import { DbService } from '../db.service';
+import { LoadingService } from '../loading.service';
 @Component({
   selector: 'app-search',
   standalone: true, // Modern Angular format
@@ -28,6 +29,7 @@ export class Search implements OnInit {
   private renderer = inject(Renderer2);
   private dbService = inject(DbService);
   private mangaDataService = inject(MangaDataService);
+  private loadingService = inject(LoadingService);
 
   // === UI State ===
   searchTerm = signal('');
@@ -142,6 +144,7 @@ export class Search implements OnInit {
     if (gameDate) {
       this.isHistoricGame.set(true);
     }
+    this.loadingService.isGameLoading.set(true);
 
     forkJoin({
       mangaList: this.mangaDataService.getFullMangaList(),
@@ -228,10 +231,12 @@ export class Search implements OnInit {
         // The image loader will have its own indicator.
         this.isLoading.set(false);
         console.log('Successfully fetched and processed all initial data.');
+        this.loadingService.isGameLoading.set(false);
       },
       error: (err) => {
         console.error('Failed to fetch initial data:', err);
         this.isLoading.set(false);
+        this.loadingService.isGameLoading.set(false);
       }
     });
   }

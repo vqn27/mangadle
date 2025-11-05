@@ -9,6 +9,7 @@ import { DomSanitizer } from '@angular/platform-browser';
 import { Item, Recommendations, baseRandomRec, RecommendationsData, HistoryEntry } from '../item.model';
 import { MangaDataService } from '../manga-data.service';
 import { DbService } from '../db.service';
+import { LoadingService } from '../loading.service';
 
 
 @Component({
@@ -30,6 +31,7 @@ export class Recommendation implements OnInit, OnDestroy {
   private dbService = inject(DbService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  private loadingService = inject(LoadingService);
 
   // Subject to automatically unsubscribe from observables on component destruction
   private destroy$ = new Subject<void>();
@@ -227,6 +229,7 @@ export class Recommendation implements OnInit, OnDestroy {
    * Fetches data from the Google Apps Script URL.
    */
   private fetchMangaData(gameDate: string | null): void {
+    this.loadingService.isGameLoading.set(true);
     forkJoin({
       fullList: this.mangaDataService.getFullMangaList(),
       dailyReccs: this.mangaDataService.getRecommendationsGame(gameDate),
@@ -345,8 +348,12 @@ export class Recommendation implements OnInit, OnDestroy {
       error: (err) => {
         console.error('Failed to fetch data from Google Apps Script. This could be a CORS issue if the script is not configured for public JSON access.', err);
         this.isLoading.set(false);
+        this.loadingService.isGameLoading.set(false);
       }
-    }).add(() => this.isLoading.set(false));
+    }).add(() => {
+      this.isLoading.set(false);
+      this.loadingService.isGameLoading.set(false);
+    });
   }
 
   private processAndSetRecommendations(reccsData: RecommendationsData): void {

@@ -6,6 +6,7 @@ import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { Item, Character, LeastPopularData, HistoryEntry } from '../item.model';
 import { forkJoin } from 'rxjs';
 import { MangaDataService } from '../manga-data.service';
+import { LoadingService } from '../loading.service';
 
 @Component({
   selector: 'app-least-popular',
@@ -22,6 +23,7 @@ export class LeastPopularComponent implements OnInit {
   private mangaDataService = inject(MangaDataService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  private loadingService = inject(LoadingService);
 
   // === UI State ===
   searchTerm = signal('');
@@ -237,6 +239,7 @@ export class LeastPopularComponent implements OnInit {
    * Fetches data from the Google Apps Script URL.
    */
   private fetchMangaData(gameDate: string | null): void {
+    this.loadingService.isGameLoading.set(true);
     forkJoin({
       fullList: this.mangaDataService.getFullMangaList(),
       dailyData: this.mangaDataService.getLeastPopularGame(gameDate),
@@ -327,10 +330,12 @@ export class LeastPopularComponent implements OnInit {
 
         console.log('Successfully fetched and processed data for least-popular game.');
         this.isLoading.set(false);
+        this.loadingService.isGameLoading.set(false);
       },
       error: (err) => {
         console.error('Failed to fetch least-popular data from Google Apps Script. This could be a CORS issue if the script is not configured for public JSON access.', err);
         this.isLoading.set(false);
+        this.loadingService.isGameLoading.set(false);
       }
     });
   }

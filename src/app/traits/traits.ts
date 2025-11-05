@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Item, Character, TraitsData, HistoryEntry } from '../item.model';
 import { forkJoin } from 'rxjs';
+import { LoadingService } from '../loading.service';
 import { MangaDataService } from '../manga-data.service';
 
 @Component({
@@ -21,6 +22,7 @@ export class TraitsComponent implements OnInit {
   private mangaDataService = inject(MangaDataService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  private loadingService = inject(LoadingService);
 
   // === UI State ===
   searchTerm = signal('');
@@ -262,6 +264,7 @@ export class TraitsComponent implements OnInit {
    * Fetches data from the Google Apps Script URL.
    */
   private fetchMangaData(gameDate: string | null): void {
+    this.loadingService.isGameLoading.set(true);
     forkJoin({
       characterNames: this.mangaDataService.getCharacterNames(),
       dailyData: this.mangaDataService.getTraitsGame(gameDate),
@@ -333,10 +336,12 @@ export class TraitsComponent implements OnInit {
 
         console.log('Successfully fetched and processed data for traits game.');
         this.isLoading.set(false);
+        this.loadingService.isGameLoading.set(false);
       },
       error: (err) => {
         console.error('Failed to fetch traits data from Google Apps Script.', err);
         this.isLoading.set(false);
+        this.loadingService.isGameLoading.set(false);
       }
     });
   }
