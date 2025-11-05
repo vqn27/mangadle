@@ -50,7 +50,6 @@ import { filter } from 'rxjs/operators';
         </button>
         <router-outlet></router-outlet>
         <!-- Debug button to clear cache -->
-
         
       </main>
     </div>
