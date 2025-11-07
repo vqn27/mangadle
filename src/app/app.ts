@@ -15,6 +15,7 @@ import { filter } from 'rxjs/operators';
           <img src="logo.png" alt="Mangadle Logo" class="sidebar-logo" width="32" height="32">
           <h2 class="sidebar-title">Mangadle</h2>
         </div>
+        <div class="sidebar-section-title">Daily Games</div>
         <a routerLink="/"
            class="sidebar-link"
            [class.disabled]="isGameLoading()"
@@ -42,6 +43,15 @@ import { filter } from 'rxjs/operators';
            [class.active]="isTraitsRouteActive()">
           <span class="sidebar-link-icon">🧠</span>
           <span class="sidebar-link-text">Guess by Character Traits</span>
+        </a>
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-section-title">Replayable Games</div>
+        <a routerLink="/trivia"
+           class="sidebar-link"
+           [class.disabled]="isGameLoading()"
+           [class.active]="isTriviaRouteActive()">
+          <span class="sidebar-link-icon">❓</span>
+          <span class="sidebar-link-text">Anime & Manga Trivia</span>
         </a>
       </nav>
       <main>
@@ -263,6 +273,7 @@ export class App {
   isRecommendationRouteActive = signal(false);
   isLeastPopularRouteActive = signal(false);
   isTraitsRouteActive = signal(false);
+  isTriviaRouteActive = signal(false);
   isGameLoading = this.loadingService.isGameLoading;
 
   constructor() {
@@ -287,6 +298,10 @@ export class App {
       // "Traits" is active for its main, historical, and history pages.
       const isTraitsActive = url.startsWith('/traits') || url === '/history-traits';
       this.isTraitsRouteActive.set(isTraitsActive);
+
+      // "Trivia" is active for its main page.
+      const isTriviaActive = url.startsWith('/trivia');
+      this.isTriviaRouteActive.set(isTriviaActive);
     });
 
     // This effect will run whenever `isDarkMode` changes, saving the preference.
