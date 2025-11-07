@@ -3,6 +3,7 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { HistoryEntry } from '../item.model';
 import { MangaDataService } from '../manga-data.service';
+import { forkJoin } from 'rxjs';
 
 @Component({
   selector: 'app-history-traits',
@@ -32,7 +33,41 @@ export class HistoryTraitsComponent implements OnInit {
   });
 
   ngOnInit() {
-    this.fetchHistory();
+    this.isLoading.set(true);
+    forkJoin({
+      history: this.mangaDataService.getTraitsHistory(),
+      today: this.mangaDataService.getTraitsGame()
+    }).subscribe({
+      next: ({ history, today }) => {
+        // The 'title' for a traits game is the character's name.
+        // The daily endpoint returns this as `characterName` or `names_(proper)`.
+        const todayCharacterName = (today as any).characterName || (today as any)['names_(proper)'];
+
+        // If today's game is not in the history sheet yet, create an entry for it.
+        if (!history.some(entry => entry.title === todayCharacterName)) {
+            const todayFormattedDate = new Date().toLocaleDateString('en-US');
+            const todayEntry: HistoryEntry = {
+                date: todayFormattedDate,
+                title: todayCharacterName,
+                jp_title: (today as any).baseTitle || (today as any).manga, // The source manga
+                gameMode: 'Traits',
+                image: (today as any).picture,
+                score: 0,
+                popularity: 0
+            };
+            history.push(todayEntry);
+        }
+
+        const sortedHistory = history.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        this.history.set(sortedHistory);
+        this.isLoading.set(false);
+      },
+      error: (err) => {
+        console.error('Failed to fetch traits history:', err);
+        this.error.set('Failed to load game history.');
+        this.isLoading.set(false);
+      }
+    });
   }
 
   playHistoryGame(date: string) {
@@ -59,22 +94,5 @@ export class HistoryTraitsComponent implements OnInit {
     if (this.currentPage() > 1) {
       this.currentPage.update(page => page - 1);
     }
-  }
-
-  private fetchHistory(): void {
-    this.isLoading.set(true);
-    this.mangaDataService.getTraitsHistory().subscribe({
-      next: (historyData) => {
-        // Sort in chronological order to show the oldest games first (Day 1, Day 2, etc.).
-        const sortedHistory = historyData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-        this.history.set(sortedHistory);
-        this.isLoading.set(false);
-      },
-      error: (err) => {
-        console.error('Failed to fetch traits history:', err);
-        this.error.set('Failed to load game history.');
-        this.isLoading.set(false);
-      }
-    });
   }
 }

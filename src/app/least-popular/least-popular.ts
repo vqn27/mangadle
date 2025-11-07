@@ -248,27 +248,35 @@ export class LeastPopularComponent implements OnInit {
       next: ({ fullList, dailyData, history }) => {
         this.fullItemList = fullList;
 
+        // For historic games, `baseTitle` is the jp_title. For daily, it's `base_title`.
+        const jpBaseTitle = this.isHistoricGame() ? (dailyData as any).baseTitle : (dailyData as any).base_title;
+
+        // Find the manga in the full list to get its display title.
+        const baseMangaFromList = this.fullItemList.find(item => item.jp_title === jpBaseTitle);
+        const displayBaseTitle = baseMangaFromList?.title || (dailyData as any).base_title;
+
         // If it's a historical game, the data is already in the correct format.
         // If it's the current day's game, we need to process it from the raw daily data.
         if (!this.isHistoricGame()) {
             const processedData: LeastPopularData = {
-                baseTitle: (dailyData as any).base_title, // Corrected property name
+                baseTitle: displayBaseTitle,
                 baseId: dailyData.baseId,
                 characters: []
             };
             for (let i = 1; i <= 10; i++) { // Assuming up to 10 characters
                 if ((dailyData as any)[`char_name_${i}`]) {
                     processedData.characters.push({
-                        id: (dailyData as any)[`char_id_${i}`],
-                        name: (dailyData as any)[`char_name_${i}`],
-                        favorites: (dailyData as any)[`char_favorites_${i}`],
-                        imageUrl: (dailyData as any)[`char_image_url_${i}`]
+                        id: (dailyData as any)[`char_id_${i}`] as number,
+                        name: (dailyData as any)[`char_name_${i}`] as string,
+                        favorites: (dailyData as any)[`char_favorites_${i}`] as number,
+                        imageUrl: (dailyData as any)[`char_image_url_${i}`] as string
                     });
                 }
             }
             this.dailyData.set(processedData);
         } else {
-            this.dailyData.set(dailyData);
+            // For historic games, ensure the baseTitle is the display title
+            this.dailyData.set({ ...dailyData, baseTitle: displayBaseTitle });
         }
         // --- Navigation and Date Logic ---
         const today = new Date();
@@ -279,21 +287,24 @@ export class LeastPopularComponent implements OnInit {
           displayDate = gameDate!;
         } else {
           // Find today's entry in the history to get the correct date format
-          const todayInHistory = history.find(h => h.jp_title === dailyData.baseTitle);
+          const todayInHistory = history.find(h => h.jp_title === jpBaseTitle);
           displayDate = todayInHistory ? todayInHistory.date : todayFormatted;
         }
         this.gameDateText.set(displayDate);
 
-        let localHistory = history.map(entry => {
+        // Ensure today's game is in the history list for navigation, even if the sheet hasn't updated.
+        // This needs to run for both historic and current day views to allow navigating to today.
+        let localHistory = history.map(entry => { // Create a mutable copy with resolved titles
             const mangaFromList = this.fullItemList.find(item => item.jp_title === entry.jp_title);
             return { ...entry, title: mangaFromList?.title || entry.jp_title };
         });
 
-        if (!this.isHistoricGame() && !localHistory.some(entry => entry.date === displayDate)) {
+        if (!localHistory.some(entry => entry.date === todayFormatted)) {
           localHistory.push({
-            date: displayDate,
-            title: dailyData.baseTitle,
-            jp_title: dailyData.baseTitle
+            date: todayFormatted,
+            title: displayBaseTitle,
+            jp_title: jpBaseTitle,
+            image: '', score: 0, popularity: 0, gameMode: 'Least Popular'
           } as HistoryEntry);
         }
 
@@ -303,7 +314,7 @@ export class LeastPopularComponent implements OnInit {
 
         // 3. Check for cached game state
         if (isPlatformBrowser(this.platformId)) {
-          const key = this.getStorageKey(dailyData.baseTitle);
+          const key = this.getStorageKey(displayBaseTitle);
           const gameState = localStorage.getItem(key);
           if (gameState === 'won') {
             this.isGameWon.set(true);
@@ -315,13 +326,13 @@ export class LeastPopularComponent implements OnInit {
 
           // Load last guess if game is over
           if (gameState) {
-            const lastGuessKey = this.getLastGuessCacheKey(dailyData.baseTitle);
+            const lastGuessKey = this.getLastGuessCacheKey(displayBaseTitle);
             const lastGuess = localStorage.getItem(lastGuessKey);
             if (lastGuess) this.searchTerm.set(lastGuess);
           }
 
           // Load cached unblurred states
-          const hintKey = this.getHintCacheKey(dailyData.baseTitle);
+          const hintKey = this.getHintCacheKey(displayBaseTitle);
           const cachedUnblurredStates = localStorage.getItem(hintKey);
           if (cachedUnblurredStates) {
             this.unblurredStates.set(JSON.parse(cachedUnblurredStates));

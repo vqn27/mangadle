@@ -54,6 +54,18 @@ export class TraitsComponent implements OnInit {
   unblurredTags = signal<{ [key: number]: boolean }>({});
 
   /**
+   * Computed signal to check if all trait tags have been revealed.
+   */
+  allTagsUnblurred = computed(() => {
+    const data = this.dailyData();
+    if (!data?.tags || data.tags.length <= 1) {
+      return true; // If there are no tags to unblur.
+    }
+    // The first tag is always visible, so we check against `length - 1`.
+    return Object.keys(this.unblurredTags()).length >= data.tags.length - 1;
+  });
+
+  /**
    * Computed signals to determine if navigation arrows should be disabled.
    */
   isFirstDay = computed(() => this.currentDateIndex === 0);
@@ -272,7 +284,7 @@ export class TraitsComponent implements OnInit {
     }).subscribe({
       next: ({ characterNames, dailyData, history }) => {
         // 1. Set the character name list for the dropdown
-        this.characterNameList = characterNames;
+        this.characterNameList = characterNames.sort((a, b) => a.localeCompare(b));
 
         // The daily game data from the Apps Script URL might have a different structure
         // than the historical data from the sheet. We normalize it here.
@@ -293,8 +305,22 @@ export class TraitsComponent implements OnInit {
         }
         this.gameDateText.set(displayDate);
 
+        // Ensure today's game is in the history list for navigation, even if the sheet hasn't updated.
+        // This needs to run for both historic and current day views to allow navigating to today.
+        let localHistory = [...history];
+        const todayInHistory = history.find(h => h.date === todayFormatted);
+        if (!todayInHistory) {
+          localHistory.push({
+            date: todayFormatted,
+            title: gameData.characterName,
+            jp_title: gameData.baseTitle, // The source manga
+            // Add other required properties for HistoryEntry to be safe
+            image: '', score: 0, popularity: 0, gameMode: 'Traits'
+          } as HistoryEntry);
+        }
+
         // Sort history and find current game index for navigation
-        const sortedHistory = history.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        const sortedHistory = localHistory.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());;
         this.gameHistory = sortedHistory;
         this.currentDateIndex = sortedHistory.findIndex(entry => entry.date === displayDate);
 

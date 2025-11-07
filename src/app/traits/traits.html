@@ -15,7 +15,7 @@
       <p>Loading character and their traits...</p>
     </div>
   }
-  
+   
   <!-- Main Game Content -->
   @if (!isLoading() && dailyData(); as data) {
     <div class="game-content-wrapper">
@@ -24,7 +24,7 @@
 
       <!-- Character Image -->
       <div class="character-image-container">
-        <div class="character-image-wrapper" (click)="unblurImage()">
+        <div class="character-image-wrapper" [class.locked]="!allTagsUnblurred()" (click)="allTagsUnblurred() && unblurImage()">
           <img 
             [src]="data.picture" 
             alt="Character" 
@@ -34,7 +34,7 @@
             (contextmenu)="$event.preventDefault()" />
           @if (!isImageUnblurred()) {
             <div class="unblur-overlay">
-              <span class="unblur-text">Click to unblur</span>
+              <span class="unblur-text">{{ allTagsUnblurred() ? 'Click to unblur' : 'Reveal all traits to unblur' }}</span>
             </div>
           }
         </div>

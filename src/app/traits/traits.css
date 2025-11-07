@@ -15,7 +15,7 @@
   position: relative;
   z-index: 10;
 }
-
+ 
 .nav-arrow {
   background: var(--input-bg, #f3f4f6);
   border: 1px solid var(--card-border, #e2e8f0);
@@ -99,13 +99,17 @@ button.game-date-text:hover {
 }
 
 .character-image.blur {
-    filter: blur(16px);
-    -webkit-filter: blur(16px);
+    filter: blur(32px) brightness(0.2);
+    -webkit-filter: blur(32px) brightness(0.2);
 }
 
 .character-image.blur:hover {
     /* The wrapper will handle the click, so the cursor applies here */
     cursor: pointer;
+}
+
+.character-image.blur:hover.locked {
+    cursor: not-allowed;
 }
 
 .unblur-overlay {
