@@ -1,3 +1,5 @@
+import { Trivia } from "./trivia/trivia";
+
 export interface Item {
     mal_id: number;
     jp_title: string;
@@ -60,4 +62,18 @@ export interface TraitsData {
   animeTitle: string;
   picture: string;
   tags: string[];
+}
+
+export interface TriviaQuestion {
+  question: string;
+  answer: string;
+  incorrectAnswers: string[];
+  shuffledAnswers?: string[];
+  selectedAnswer?: string;
+  isCorrect?: boolean;
+}
+
+export interface TriviaSession {
+  token: string | null;
+  questions: TriviaQuestion[];
 }

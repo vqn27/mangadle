@@ -1,0 +1,62 @@
+<!-- Main container for the trivia game -->
+<div class="game-container" [class.loading]="isLoading()">
+
+  <!-- Loading Spinner -->
+  <div *ngIf="isLoading()" class="loading-spinner-overlay">
+    <div class="spinner"></div>
+  </div>
+
+  <!-- Game Content -->
+  <div *ngIf="!isLoading() && triviaQuestions().length > 0" class="game-content">
+    <div class="content-wrapper">
+      <!-- Header: Game Title and Date -->
+      <div class="game-header">
+        <h1 class="title">12 Anime & Manga Questions Trivia</h1>
+      </div>
+
+    <!-- Trivia Questions Container -->
+    <div class="trivia-questions-container">
+      <ng-container *ngFor="let question of paginatedTriviaQuestions(); let i = index; let last = last">
+        <div class="question-block">
+          <p class="question-text">{{ i + 1 + (currentPageIndex() * questionsPerPage) }}. {{ question.question }}</p>
+          <div class="answer-grid" [class.answered]="question.selectedAnswer">
+            <div 
+              *ngFor="let answer of question.shuffledAnswers" 
+              class="answer-cell"
+              (click)="checkAnswer(question, answer)"
+              [ngClass]="{
+                'correct': question.selectedAnswer && answer === question.answer,
+                'incorrect': question.selectedAnswer === answer && !question.isCorrect
+              }"
+            >
+              {{ answer }}
+            </div>
+          </div>
+        </div>
+        <hr *ngIf="!last" class="question-separator">
+      </ng-container>
+    </div>
+
+    <!-- Pagination Controls -->
+    <div class="pagination-controls">
+        <button class="nav-arrow" (click)="previousPage()" [disabled]="isFirstPage()">&#x25C0;</button>
+        <button class="nav-arrow" (click)="nextPage()" [disabled]="isLastPage() || !isCurrentPageAnswered()">&#x25B6;</button>
+    </div>
+    </div>
+  </div>
+
+  <!-- Error Message -->
+  <div *ngIf="!isLoading() && triviaQuestions().length === 0" class="error-message">
+    <h2>Oops!</h2>
+    <p>Could not load today's trivia. Please try again later.</p>
+  </div>
+
+  <!-- Final Score Popup -->
+  <div *ngIf="showScorePopup()" class="result-popup-backdrop">
+    <div class="result-popup-content">
+      <h2>Game Over!</h2>
+      <p class="score-text">You got {{ score() }} out of 12 questions!</p>
+      <button class="play-again-button" (click)="playAgain()">Play Again</button>
+    </div>
+  </div>
+</div>

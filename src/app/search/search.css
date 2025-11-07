@@ -94,6 +94,8 @@ button.game-date-text:hover {
   margin-bottom: 30px;
   max-width: 420px;
   width: 100%;
+  display: flex;
+  justify-content: center;
 }
 
 .image-loading-overlay {
@@ -113,16 +115,17 @@ button.game-date-text:hover {
 }
 
 .manga-panel-container {
-    border: 4px solid black;
     padding: 8px;
     background-color: var(--card-bg, white);
-    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
-    max-width: 420px; /* 400px image + padding + border */
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    max-width: 420px; /* 400px image + padding */
     width: 100%;
     transition: transform 0.3s ease-in-out, z-index 0s 0.3s;
     cursor: pointer;
     position: relative;
     z-index: 1;
+    border-radius: 12px;
+    overflow: hidden;
 }
 
 .answer-container {
@@ -139,6 +142,7 @@ button.game-date-text:hover {
     display: block;
     width: 100%;
     height: auto;
+    border-radius: 8px;
 }
 
 .panel-buttons-container {
