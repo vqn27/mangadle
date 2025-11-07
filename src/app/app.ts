@@ -104,6 +104,8 @@ import { filter } from 'rxjs/operators';
       display: flex;
       min-height: 100vh;
       background-color: var(--bg-color);
+      width: 100%;
+      overflow-x: hidden;
       transition: background-color 0.3s ease;
     }
 
