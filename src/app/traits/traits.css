@@ -4,6 +4,8 @@
     align-items: center;
     width: 100%;
     max-width: 900px;
+    padding: 0; /* Padding will be handled by media query */
+    box-sizing: border-box;
 }
 
 .date-navigator {
@@ -141,6 +143,7 @@ button.game-date-text:hover {
     justify-content: center;
     gap: 16px;
     margin-bottom: 24px;
+    flex-wrap: wrap;
     width: 100%;
 }
 
@@ -175,7 +178,7 @@ button.game-date-text:hover {
     gap: 16px;
     margin-bottom: 32px;
     width: 100%;
-    max-width: 800px;
+    box-sizing: border-box;
 }
 
 .trait-card {
@@ -238,6 +241,7 @@ button.game-date-text:hover {
     position: relative;
     width: 100%;
     max-width: 700px;
+    box-sizing: border-box;
 }
 
 .search-bar {
@@ -315,4 +319,16 @@ button.game-date-text:hover {
   color: var(--text-secondary);
   font-size: 1rem;
   text-align: center;
+}
+
+/* --- Mobile Responsiveness --- */
+@media (max-width: 768px) {
+    .game-content-wrapper, .search-container {
+        padding: 0 16px;
+    }
+
+    .character-image-wrapper {
+        width: 250px;
+        height: 333px;
+    }
 }

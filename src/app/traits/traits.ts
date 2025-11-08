@@ -283,6 +283,10 @@ export class TraitsComponent implements OnInit {
       history: this.mangaDataService.getTraitsHistory()
     }).subscribe({
       next: ({ characterNames, dailyData, history }) => {
+        if (!dailyData) {
+          this.isLoading.set(false);
+          return; // Exit if there's no data to process
+        }
         // 1. Set the character name list for the dropdown
         this.characterNameList = characterNames.sort((a, b) => a.localeCompare(b));
 
