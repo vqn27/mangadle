@@ -45,7 +45,8 @@
       <img 
         [src]="randomManga()?.imageUrl" 
         [alt]="randomManga()?.title" 
-        class="blurred-hint-image" 
+        class="blurred-hint-image"
+        [class.no-blur]="isGameWon() || isGameLost()"
         draggable="false">
     </div>
   }
