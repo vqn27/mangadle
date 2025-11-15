@@ -89,7 +89,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.8);
+  background-color: rgba(0, 0, 0, 0.6);
   color: white;
   padding: 16px;
   opacity: 0;
@@ -97,6 +97,8 @@
   transition: opacity 0.3s ease, visibility 0.3s ease;
   overflow-y: auto;
   border-radius: 4px;
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
 }
 
 .manga-panel-container:hover .synopsis-overlay {
@@ -111,7 +113,7 @@
 }
 
 .genre-theme-hint-container {
-  margin-bottom: 24px;
+  margin-bottom: 12px;
   padding: 12px 20px;
   border-radius: 8px;
   font-size: 1.1rem;
@@ -136,6 +138,10 @@
   gap: 12px;
   margin-bottom: 24px;
 }
+.hint-buttons-container.single-hint {
+  margin-top: 0; /* Removed negative margin to increase the gap */
+}
+
 
 .recommendation-hint-button {
   background-color: var(--button-secondary-bg, #fff);
@@ -167,25 +173,24 @@
   border-color: var(--button-disabled-border);
 }
 
-.blurred-hint-container {
-  margin-bottom: 24px;
-  padding: 12px;
-  background-color: var(--input-bg, #f3f4f6);
-  border-radius: 8px;
+.floating-blurred-hint {
+  position: fixed;
+  z-index: 100;
+  pointer-events: none; /* Allows mouse events to pass through */
+  background-color: var(--card-bg);
+  padding: 8px;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--card-border);
+  transform: translateX(-50%); /* Center horizontally on the cursor */
 }
 
 .blurred-hint-image {
   width: 100%;
   max-width: 250px;
   border-radius: 8px;
-  filter: blur(12px);
-  -webkit-filter: blur(12px); /* For Safari support */
-  transition: filter 0.3s ease-in-out;
-}
-
-.blurred-hint-image.unblurred {
-  filter: none;
-  -webkit-filter: none;
+  filter: blur(16px);
+  -webkit-filter: blur(16px);
 }
 
 /* --- Guess Button States --- */

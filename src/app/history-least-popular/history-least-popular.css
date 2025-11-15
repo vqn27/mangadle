@@ -1,10 +1,10 @@
 .history-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 16px;
   width: 100%;
-  max-width: 1000px;
   margin-bottom: 24px;
+  box-sizing: border-box;
 }
 
 .history-button {
@@ -80,4 +80,14 @@
 .pagination-text {
   font-weight: 500;
   color: var(--text-secondary, #6b7280);
+}
+
+@media (max-width: 768px) {
+  .history-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
+  .content-wrapper {
+    padding: 0 16px;
+    box-sizing: border-box;
+  }
 }

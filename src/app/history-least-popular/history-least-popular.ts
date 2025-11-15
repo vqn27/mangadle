@@ -39,27 +39,32 @@ export class HistoryLeastPopularComponent implements OnInit {
       fullList: this.mangaDataService.getFullMangaList()
     }).subscribe({
       next: ({ history, today, fullList }) => {
-        // The daily endpoint returns YYYY-MM-DD, but the history sheet uses MM/DD/YYYY.
-        // We need to find today's date from the full history list to format it correctly.
-        const todayInHistory = history.find(h => h.jp_title === today.baseTitle);
-        if (!todayInHistory) {
-          this.history.set(history); // Set history even if today's game isn't in the sheet yet
-          this.isLoading.set(false);
-          return;
+        const todayJpTitle = (today as any).base_title;
+
+        // Resolve display titles for the fetched history from the spreadsheet
+        const resolvedHistory = history.map(entry => {
+            const mangaFromList = fullList.find(item => item.jp_title === entry.jp_title);
+            return { ...entry, title: mangaFromList?.title || entry.jp_title };
+        });
+
+        // If today's game is not in the history sheet yet, create an entry for it.
+        if (!resolvedHistory.some(entry => entry.jp_title === todayJpTitle)) {
+            const todayFormattedDate = new Date().toLocaleDateString('en-US');
+            const baseMangaFromList = fullList.find(item => item.jp_title === todayJpTitle);
+            const todayEntry: HistoryEntry = {
+                date: todayFormattedDate,
+                title: baseMangaFromList?.title || todayJpTitle,
+                jp_title: todayJpTitle,
+                gameMode: 'Least Popular',
+                image: '', // Not available for today's game yet
+                score: 0,
+                popularity: 0
+            };
+            resolvedHistory.push(todayEntry);
         }
-        
-        const todayEntry: HistoryEntry = {
-          date: todayInHistory.date,
-          title: todayInHistory.title,
-          jp_title: today.baseTitle,
-          image: todayInHistory.image, // Assuming the history sheet has an image
-          score: 0,
-          popularity: 0,
-          gameMode: 'Least Popular'
-        };
 
         // Sort in chronological order to show the oldest games first (Day 1, Day 2, etc.).
-        const sortedHistory = history.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        const sortedHistory = resolvedHistory.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         this.history.set(sortedHistory);
         this.isLoading.set(false);
       },

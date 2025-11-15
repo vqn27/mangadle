@@ -41,8 +41,10 @@ export class Recommendation implements OnInit, OnDestroy {
   isDropdownOpen = signal(false);
   isLoading = signal(true);
   areImagesLoading = signal(true);
-  isBlurredHintVisible = signal(false);
+  isBlurredHintActive = signal(false);
   isGenreHintVisible = signal(false);
+  hintPositionX = signal(0);
+  hintPositionY = signal(0);
 
   // === Game State ===
   guessResult = signal<'correct' | 'incorrect' | null>(null);
@@ -131,9 +133,9 @@ export class Recommendation implements OnInit, OnDestroy {
       const randomManga = this.randomManga();
       if (randomManga && isPlatformBrowser(this.platformId)) {
         const hintKey = this.getHintCacheKey(randomManga.title);
-        const hintsToCache = {
+        const hintsToCache = { // Renamed isBlurredHintVisible to blurredHint
           genreHint: this.isGenreHintVisible(),
-          blurredHint: this.isBlurredHintVisible()
+          blurredHint: this.isBlurredHintActive()
         };
         // Only save if at least one hint has been used.
         if (hintsToCache.genreHint || hintsToCache.blurredHint) {
@@ -205,13 +207,6 @@ export class Recommendation implements OnInit, OnDestroy {
   }
 
   /**
-   * Shows the blurred image hint.
-   */
-  showBlurredHint(): void {
-    this.isBlurredHintVisible.set(true); 
-  }
-
-  /**
    * Shows the genre and theme hint.
    */
   showGenreHint(): void {
@@ -223,6 +218,24 @@ export class Recommendation implements OnInit, OnDestroy {
    */
   clearSearch(): void {
     this.searchTerm.set('');
+  }
+
+  // --- Hint Hover and Position Tracking ---
+
+  onHintMouseEnter(): void {
+    if (!this.isGenreHintVisible()) return;
+    this.isBlurredHintActive.set(true);
+  }
+
+  onHintMouseLeave(): void {
+    this.isBlurredHintActive.set(false);
+  }
+
+  onHintMouseMove(event: MouseEvent): void {
+    // Position the hint to be centered horizontally and below the cursor.
+    const offsetY = 30; // Increased distance below the cursor
+    this.hintPositionX.set(event.clientX);
+    this.hintPositionY.set(event.clientY + offsetY);
   }
 
   /**
@@ -336,8 +349,8 @@ export class Recommendation implements OnInit, OnDestroy {
             if (hints.genreHint) {
               this.isGenreHintVisible.set(hints.genreHint);
             }
-            if (hints.blurredHint) {
-              this.isBlurredHintVisible.set(hints.blurredHint);
+            if (hints.blurredHint) { // Renamed isBlurredHintVisible to blurredHint
+              this.isBlurredHintActive.set(hints.blurredHint);
             }
           }
         }

@@ -26,22 +26,36 @@
     <button class="nav-arrow" (click)="navigateToDay(1)" [disabled]="isLastDay()">&#9654;</button>
   </div>
 
+  <!-- Moved Blurred Cover Hint Button -->
+  <div class="hint-buttons-container single-hint">
+    <button 
+      class="recommendation-hint-button" 
+      (mouseenter)="onHintMouseEnter()" 
+      (mouseleave)="onHintMouseLeave()"
+      (mousemove)="onHintMouseMove($event)"
+      [disabled]="!isGenreHintVisible()">
+      @if (!isGenreHintVisible()) { <span>🔒 </span> }Blurred Cover
+    </button>
+  </div>
+
+
+  <!-- Floating Blurred Image Hint -->
+  @if (isBlurredHintActive()) {
+    <div class="floating-blurred-hint" [style.left.px]="hintPositionX()" [style.top.px]="hintPositionY()">
+      <img 
+        [src]="randomManga()?.imageUrl" 
+        [alt]="randomManga()?.title" 
+        class="blurred-hint-image"
+        [class.no-blur]="isGameWon() || isGameLost()"
+        draggable="false">
+    </div>
+  }
 
   @if (isLoading()) {
     <div class="loading-container">
       <p>Loading recommendations...</p>
     </div>
   } @else {
-    @if (isBlurredHintVisible()) {
-      <div class="blurred-hint-container" (contextmenu)="$event.preventDefault()">
-      <img 
-        [src]="randomManga()?.imageUrl" 
-        [alt]="randomManga()?.title" 
-        class="blurred-hint-image" 
-        [class.unblurred]="isGameWon() || isGameLost()" draggable="false">
-    </div>
-
-    }
     @if (areImagesLoading()) {
       <div class="image-loading-overlay">
         <p>Loading recommendations...</p>
@@ -84,10 +98,6 @@
 
     <div class="hint-buttons-container">
       @if (!isGenreHintVisible()) { <button class="recommendation-hint-button" (click)="showGenreHint()">Genres & Themes</button> }
-      @if (!isBlurredHintVisible()) { <button class="recommendation-hint-button" (click)="showBlurredHint()" [disabled]="!isGenreHintVisible()">
-        @if (!isGenreHintVisible()) { <span>🔒 </span> }Blurred Cover
-      </button>
-      }
     </div>
 
     <!-- The main searchable dropdown component -->
