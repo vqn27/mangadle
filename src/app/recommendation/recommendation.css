@@ -193,6 +193,11 @@
   -webkit-filter: blur(16px);
 }
 
+.blurred-hint-image.no-blur {
+  filter: none;
+  -webkit-filter: none;
+}
+
 /* --- Guess Button States --- */
 .submit-button.incorrect-guess {
   background-color: #dc2626; /* red-600 */

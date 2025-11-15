@@ -12,8 +12,11 @@
   } @else {
     <div class="history-grid">
       @for (entry of paginatedHistory(); track entry.date; let i = $index) {
-        <button class="history-button" (click)="playHistoryGame(entry.date)" [class.guessed]="isGameGuessed(entry)">
-          <span class="history-button-day">Day {{ ((currentPage() - 1) * itemsPerPage) + i + 1 }}</span>
+        <button 
+          class="history-button" 
+          [class.guessed]="isGameGuessed(entry)"
+          (click)="playHistoryGame(entry.date)">
+          <span class="history-button-day">Day {{ (currentPage() - 1) * itemsPerPage + i + 1 }}</span>
           <span class="history-button-date">{{ entry.date }}</span>
         </button>
       }
