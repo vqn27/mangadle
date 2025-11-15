@@ -1,9 +1,10 @@
 .history-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  box-sizing: border-box;
   gap: 16px;
   width: 100%;
-  max-width: 1000px;
+  max-width: 600px;
   margin-bottom: 24px;
 }
 
@@ -80,4 +81,11 @@
 .pagination-text {
   font-weight: 500;
   color: var(--text-secondary, #6b7280);
+}
+
+@media (max-width: 768px) {
+  .content-wrapper {
+    padding: 0 16px;
+    box-sizing: border-box;
+  }
 }
